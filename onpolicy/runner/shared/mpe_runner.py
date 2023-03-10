@@ -104,14 +104,15 @@ class MPERunner(Runner):
                             np.concatenate(self.buffer.rnn_states_critic[step]),
                             np.concatenate(self.buffer.masks[step]))
         # [self.envs, agents, dim]
-        values = np.array(np.split(_t2n(value), self.n_rollout_threads))
+        values = np.array(np.split(_t2n(value), self.n_rollout_threads))  # 多个进程的, 分开.由[   ]变为[[][][]]
         actions = np.array(np.split(_t2n(action), self.n_rollout_threads))
         action_log_probs = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
         rnn_states = np.array(np.split(_t2n(rnn_states), self.n_rollout_threads))
         rnn_states_critic = np.array(np.split(_t2n(rnn_states_critic), self.n_rollout_threads))
         # rearrange action
         if self.envs.action_space[0].__class__.__name__ == 'MultiDiscrete':
-            for i in range(self.envs.action_space[0].shape):
+            for i in range(self.envs.action_space[0].shape):  # action_space[0]:其实action_space[i]都是一样的，一个multi_discrete
+                # np.eye: one hot form of action
                 uc_actions_env = np.eye(self.envs.action_space[0].high[i] + 1)[actions[:, :, i]]
                 if i == 0:
                     actions_env = uc_actions_env
@@ -119,6 +120,9 @@ class MPERunner(Runner):
                     actions_env = np.concatenate((actions_env, uc_actions_env), axis=2)
         elif self.envs.action_space[0].__class__.__name__ == 'Discrete':
             actions_env = np.squeeze(np.eye(self.envs.action_space[0].n)[actions], 2)
+        elif self.envs.action_space[0].__class__.__name__ == 'Box':
+            actions_env = actions  # 需要写成[[ar,at],[ar,at]...]
+            print(actions)
         else:
             raise NotImplementedError
 
@@ -166,6 +170,9 @@ class MPERunner(Runner):
                         eval_actions_env = np.concatenate((eval_actions_env, eval_uc_actions_env), axis=2)
             elif self.eval_envs.action_space[0].__class__.__name__ == 'Discrete':
                 eval_actions_env = np.squeeze(np.eye(self.eval_envs.action_space[0].n)[eval_actions], 2)
+            elif self.eval_envs.action_space[0].__class__.__name__ == 'Box':
+                ####################### modify #################################
+                eval_actions_env = eval_actions 
             else:
                 raise NotImplementedError
 
@@ -223,6 +230,8 @@ class MPERunner(Runner):
                             actions_env = np.concatenate((actions_env, uc_actions_env), axis=2)
                 elif envs.action_space[0].__class__.__name__ == 'Discrete':
                     actions_env = np.squeeze(np.eye(envs.action_space[0].n)[actions], 2)
+                elif self.envs.action_space[0].__class__.__name__ == 'Box':
+                    actions_env = actions
                 else:
                     raise NotImplementedError
 

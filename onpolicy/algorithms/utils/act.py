@@ -18,13 +18,13 @@ class ACTLayer(nn.Module):
         if action_space.__class__.__name__ == "Discrete":
             action_dim = action_space.n
             self.action_out = Categorical(inputs_dim, action_dim, use_orthogonal, gain)
-        elif action_space.__class__.__name__ == "Box":
-            action_dim = action_space.shape[0]
+        elif action_space.__class__.__name__ == "Box":  # WE NEED THIS
+            action_dim = action_space.shape[0]  # 2
             self.action_out = DiagGaussian(inputs_dim, action_dim, use_orthogonal, gain)
         elif action_space.__class__.__name__ == "MultiBinary":
             action_dim = action_space.shape[0]
             self.action_out = Bernoulli(inputs_dim, action_dim, use_orthogonal, gain)
-        elif action_space.__class__.__name__ == "MultiDiscrete":  # reference enter this
+        elif action_space.__class__.__name__ == "MultiDiscrete":  # simple_reference enter this
             self.multi_discrete = True
             action_dims = action_space.high - action_space.low + 1
             self.action_outs = []
@@ -61,7 +61,6 @@ class ACTLayer(nn.Module):
 
             actions = torch.cat(actions, -1)
             action_log_probs = torch.sum(torch.cat(action_log_probs, -1), -1, keepdim=True)
-
         elif self.multi_discrete:
             actions = []
             action_log_probs = []
@@ -74,8 +73,7 @@ class ACTLayer(nn.Module):
 
             actions = torch.cat(actions, -1)
             action_log_probs = torch.cat(action_log_probs, -1)
-        
-        else:
+        else:  # BOX
             action_logits = self.action_out(x, available_actions)
             actions = action_logits.mode() if deterministic else action_logits.sample() 
             action_log_probs = action_logits.log_probs(actions)

@@ -16,8 +16,9 @@ class MultiAgentEnv(gym.Env):
 
     def __init__(self, world, reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,  # 以上4个callback是通过MPE_env跑通的
-                 done_callback=None, post_step_callback=None,  # MPE游戏没用的参数
-                 shared_viewer=True, discrete_action=True):
+                 done_callback=None, post_step_callback=None,  # MPE游戏没用到的参数
+                 shared_viewer=True, discrete_action=False):
+        # discrete_action为false,即指定动作为Box类型
 
         self.world = world
         self.world_length = self.world.world_length
@@ -40,10 +41,11 @@ class MultiAgentEnv(gym.Env):
 
         # if true, action is a number 0...N, otherwise action is a one-hot N-dimensional vector
         self.discrete_action_input = False
+
         # if true, even the action is continuous, action will be performed discretely
         self.force_discrete_action = world.discrete_action if hasattr(
             world, 'discrete_action') else False
-        # in this env, force_discrete_action == False��because world do not have discrete_action
+        # in this env, force_discrete_action == False because world do not have discrete_action
 
         # if true, every agent has the same reward
         self.shared_reward = world.collaborative if hasattr(
@@ -62,23 +64,15 @@ class MultiAgentEnv(gym.Env):
             # physical action space
             if self.discrete_action_space:
                 u_action_space = spaces.Discrete(world.dim_p * 2 + 1)
-            else:
+            else:  # WHAT WE NEED
                 u_action_space = spaces.Box(
-                    low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,), dtype=np.float32)  # [-1,1]
+                    low=-agent.u_range, high=+agent.u_range, shape=(world.dim_p,), dtype=np.float32)  # [ar, at], 2维
+            
             if agent.movable:
                 total_action_space.append(u_action_space)
-
-            # communication action space
-            if self.discrete_action_space:
-                c_action_space = spaces.Discrete(world.dim_c)
-            else:
-                c_action_space = spaces.Box(low=0.0, high=1.0, shape=(
-                    world.dim_c,), dtype=np.float32)  # [0,1]
             
-            if not agent.silent:
-                total_action_space.append(c_action_space)
-            # total action space
-            if len(total_action_space) > 1:
+            # total action space(u and c)
+            if len(total_action_space) > 1:  # u_action & c_action
                 # all action spaces are discrete, so simplify to MultiDiscrete action space
                 if all([isinstance(act_space, spaces.Discrete) for act_space in total_action_space]):
                     act_space = MultiDiscrete(
@@ -87,11 +81,11 @@ class MultiAgentEnv(gym.Env):
                     act_space = spaces.Tuple(total_action_space)
                 self.action_space.append(act_space)
             else:
-                self.action_space.append(total_action_space[0])
+                self.action_space.append(total_action_space[0])  # 只有u_action
         
             # observation space
-            obs_dim = len(observation_callback(agent, self.world))
-            share_obs_dim += obs_dim
+            obs_dim = len(observation_callback(agent, self.world))  # callback from senario, changeable
+            share_obs_dim += obs_dim  # simple concatenate
             self.observation_space.append(spaces.Box(
                 low=-np.inf, high=+np.inf, shape=(obs_dim,), dtype=np.float32))  # [-inf,inf]
             agent.action.c = np.zeros(self.world.dim_c)
@@ -114,18 +108,19 @@ class MultiAgentEnv(gym.Env):
             np.random.seed(seed)
 
     # step  this is  env.step()
-    def step(self, action_n):
+    def step(self, action_n):  # action_n: action for all policy agents, concatenated, from MPErunner
         self.current_step += 1
         obs_n = []
-        reward_n = []
+        reward_n = []  # 所有智能体的横向拼接
         done_n = []
         info_n = []
-        self.agents = self.world.policy_agents
+        self.agents = self.world.policy_agents  # adversaries only
         # set action for each agent
-        for i, agent in enumerate(self.agents):
+        for i, agent in enumerate(self.agents):  # adversaries only
             self._set_action(action_n[i], agent, self.action_space[i])
         # advance world state
         self.world.step()  # core.step()
+
         # record observation for each agent
         for i, agent in enumerate(self.agents):
             obs_n.append(self._get_obs(agent))
@@ -205,9 +200,11 @@ class MultiAgentEnv(gym.Env):
             action = act
         else:
             action = [action]
+
         if agent.movable:
-            # physical action
-            if self.discrete_action_input:
+            # physical action, obtain agent.action.u for each agent
+            # WE NEED BOX
+            if self.discrete_action_input:  # multi_discrete
                 agent.action.u = np.zeros(self.world.dim_p)
                 # process discrete action
                 if action[0] == 1:
@@ -224,33 +221,23 @@ class MultiAgentEnv(gym.Env):
                     agent.action.u[0] += action[0][1] - action[0][2]
                     agent.action.u[1] += action[0][3] - action[0][4]
                     d = 5
-                else:
-                    if self.force_discrete_action:
+                else:  # 连续动作空间
+                    if self.force_discrete_action:  # false
                         p = np.argmax(action[0][0:self.world.dim_p])
                         action[0][:] = 0.0
                         action[0][p] = 1.0
-                    agent.action.u = action[0][0:self.world.dim_p]
+                    agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
                     d = self.world.dim_p
 
-            sensitivity = 5.0
-            if agent.accel is not None:
-                sensitivity = agent.accel
-            agent.action.u *= sensitivity
+            # sensitivity = 5.0  # 放缩系数
+            # if agent.accel is not None:
+            #     sensitivity = agent.accel
+            # agent.action.u *= sensitivity
 
             if (not agent.silent) and (not isinstance(action_space, MultiDiscrete)):
                 action[0] = action[0][d:]
             else:
                 action = action[1:]
-
-        if not agent.silent:
-            # communication action
-            if self.discrete_action_input:
-                agent.action.c = np.zeros(self.world.dim_c)
-                agent.action.c[action[0]] = 1.0
-            else:
-                agent.action.c = action[0]
-
-            action = action[1:]
 
         # make sure we used all elements of action
         assert len(action) == 0
