@@ -19,6 +19,7 @@ class AgentState(EntityState):
         self.phi = None  # 0-2pi
         # physical angular velocity
         self.p_omg = None 
+        self.last_a = 0
 
 # action of the agent
 class Action(object):
@@ -195,7 +196,7 @@ class World(object):
         self.world_step += 1
         # set actions for scripted agents
         for agent in self.scripted_agents:
-            agent.action = agent.action_callback(self, agent)
+            agent.action = agent.action_callback(agent, self.policy_agents)
         
         # gather forces applied to entities
         u = [None] * len(self.entities)  # 空数组
@@ -219,7 +220,7 @@ class World(object):
             u[i] = agent.action.u
         return u
 
-    def GetClockAngle(v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
+    def GetClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
         # 2个向量模的乘积
         TheNorm = np.linalg.norm(v1)*np.linalg.norm(v2)
         # 叉乘
@@ -246,7 +247,7 @@ class World(object):
                     pass
                 else:
                     delta_theta -= np.pi*2 
-                v_ = agent.max_speed * np.linalg.norm(a_)
+                v_ = agent.max_speed * np.linalg.norm(a_)  # 正
                 w_ = agent.max_angular * delta_theta/(np.pi)  # 可正可负
                 # update phi
                 agent.state.p_omg = w_
@@ -254,44 +255,13 @@ class World(object):
                 if agent.state.phi>2*np.pi:
                     agent.state.phi -= 2*np.pi
                 phi_ = agent.state.phi
+                # update acc
+                new_v = np.array([v_*np.cos(phi_), v_*np.sin(phi_)])
+                agent.state.last_a = v_ - np.linalg.norm(agent.state.p_vel)
                 # update p_vel
-                agent.state.p_vel = np.array([v_*np.cos(phi_), v_*np.sin(phi_)])
+                agent.state.p_vel = new_v
                 # update p_pos
                 agent.state.p_pos += agent.state.p_vel * self.dt
             else:  # u = [Vx, Vy]
                 agent.state.p_vel = np.array([u[i][0], u[i][1]])
                 agent.state.p_pos += agent.state.p_vel * self.dt
-
-    # get collision forces for any contact between two entities
-    def get_entity_collision_force(self, ia, ib):
-        entity_a = self.entities[ia]
-        entity_b = self.entities[ib]
-        if (not entity_a.collide) or (not entity_b.collide):
-            return [None, None]  # not a collider
-        if (not entity_a.movable) and (not entity_b.movable):
-            return [None, None]  # neither entity moves
-        if (entity_a is entity_b):
-            return [None, None]  # don't collide against itself
-        if self.cache_dists:
-            delta_pos = self.cached_dist_vect[ia, ib]
-            dist = self.cached_dist_mag[ia, ib]
-            dist_min = self.min_dists[ia, ib]
-        else:
-            # compute actual distance between entities
-            delta_pos = entity_a.state.p_pos - entity_b.state.p_pos
-            dist = np.sqrt(np.sum(np.square(delta_pos)))
-            # minimum allowable distance
-            dist_min = entity_a.size + entity_b.size
-        # softmax penetration
-        k = self.contact_margin
-        penetration = np.logaddexp(0, -(dist - dist_min)/k)*k
-        force = self.contact_force * delta_pos / dist * penetration
-        if entity_a.movable and entity_b.movable:
-            # consider mass in collisions
-            force_ratio = entity_b.mass / entity_a.mass
-            force_a = force_ratio * force
-            force_b = -(1 / force_ratio) * force
-        else:
-            force_a = +force if entity_a.movable else None
-            force_b = -force if entity_b.movable else None
-        return [force_a, force_b]

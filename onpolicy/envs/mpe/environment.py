@@ -198,7 +198,7 @@ class MultiAgentEnv(gym.Env):
                 act.append(action[index:(index+s)])
                 index += s
             action = act
-        else:
+        else:  # Box
             action = [action]
 
         if agent.movable:
@@ -228,19 +228,18 @@ class MultiAgentEnv(gym.Env):
                         action[0][p] = 1.0
                     agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
                     d = self.world.dim_p
-
-            # sensitivity = 5.0  # 放缩系数
-            # if agent.accel is not None:
-            #     sensitivity = agent.accel
-            # agent.action.u *= sensitivity
+                    # print("action in env is {}".format(action))
+            # print("1 action in env is {}".format(action))
 
             if (not agent.silent) and (not isinstance(action_space, MultiDiscrete)):
-                action[0] = action[0][d:]
+                action = action[0][d:]
             else:
                 action = action[1:]
+        # print("2 action in env is {}".format(action))
+        # print(len(action))
 
         # make sure we used all elements of action
-        assert len(action) == 0
+        assert len(action) == 0, 'some action not used'
 
     # reset rendering assets
     def _reset_render(self):

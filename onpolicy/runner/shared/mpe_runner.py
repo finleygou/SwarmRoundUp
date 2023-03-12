@@ -81,14 +81,14 @@ class MPERunner(Runner):
     def warmup(self):
         # reset env
         obs = self.envs.reset()
-
+        # print(obs)
         # replay buffer
         if self.use_centralized_V:
             share_obs = obs.reshape(self.n_rollout_threads, -1)
             share_obs = np.expand_dims(share_obs, 1).repeat(self.num_agents, axis=1)
         else:
             share_obs = obs
-
+        # print(share_obs)
         self.buffer.share_obs[0] = share_obs.copy()
         self.buffer.obs[0] = obs.copy()
 
@@ -122,7 +122,7 @@ class MPERunner(Runner):
             actions_env = np.squeeze(np.eye(self.envs.action_space[0].n)[actions], 2)
         elif self.envs.action_space[0].__class__.__name__ == 'Box':
             actions_env = actions  # 需要写成[[ar,at],[ar,at]...]
-            print(actions)
+            # print(actions)
         else:
             raise NotImplementedError
 

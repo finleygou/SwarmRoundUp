@@ -64,10 +64,13 @@ class R_Actor(nn.Module):
             available_actions = check(available_actions).to(**self.tpdv)
 
         actor_features = self.base(obs) # 特征向量O
+        # print("shape of actor_features:{}, rnn_states:{}, masks:{}".format(actor_features.shape, rnn_states.shape,
+                                                                        #    masks.shape))
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
 
+        # print("the shape of actor_features:{}".format(actor_features.shape))
         actions, action_log_probs = self.act(actor_features, available_actions, deterministic)
 
         return actions, action_log_probs, rnn_states
