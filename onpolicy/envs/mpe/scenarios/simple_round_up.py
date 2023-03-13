@@ -1,12 +1,16 @@
 import numpy as np
 from onpolicy.envs.mpe.core import World, Agent
 from onpolicy.envs.mpe.scenario import BaseScenario
+from onpolicy import global_var as glv
 
 class Scenario(BaseScenario):
     
     def __init__(self) -> None:
         super().__init__()
-        self.d_cap = 0.8 # 期望围捕半径
+        self.cd = 1.5
+        self.cp = 0.5
+        self.d_cap = 0.8 # 期望围捕半径,动态变化,在set_CL里面
+        self.use_CL = True  # 是否使用课程式训练
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self,args):
@@ -59,7 +63,7 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 2*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为2，角度360，随机采样。圆域。
+                r_, theta_ = 1.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
                 agent.state.p_pos = np.array([r_*np.cos(theta_), 5+r_*np.cos(theta_)])  # (0,5)为圆心
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy  
@@ -82,9 +86,10 @@ class Scenario(BaseScenario):
         dist_min = agent1.size + agent2.size
         return True if dist < dist_min else False
     
-    def GetClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
+    def Get_antiClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
         # 2个向量模的乘积
         TheNorm = np.linalg.norm(v1)*np.linalg.norm(v2)
+        assert TheNorm!=0, "0 in denominator"
         # 叉乘
         rho = np.arcsin(np.cross(v1, v2)/TheNorm)
         # 点乘
@@ -97,7 +102,7 @@ class Scenario(BaseScenario):
     def GetAcuteAngle(self, v1, v2):  # 计算较小夹角(0-pi)
         norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
         if norm1 == 0 or norm2 == 0:
-            # print('0 in denominator')
+            # print('0 in denominator ')
             cos_ = 1  # 初始化速度为0，会出现分母为零
         else:  
             cos_ = np.dot(v1, v2)/(norm1*norm2)
@@ -113,10 +118,17 @@ class Scenario(BaseScenario):
         angle_list = []
         for adv in adversary:
             if adv == agent:
-                angle_list.append(0)
+                angle_list.append(-1.0)
                 continue
-            angle_ = self.GetClockAngle(agent.state.p_pos-target.state.p_pos, adv.state.p_pos-target.state.p_pos)
-            angle_list.append(angle_)
+            agent_vec = agent.state.p_pos-target.state.p_pos
+            neighbor_vec = adv.state.p_pos-target.state.p_pos
+            angle_ = self.Get_antiClockAngle(agent_vec, neighbor_vec)
+            if np.isnan(angle_):
+                print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
+                angle_list.append(0)
+            else:
+                angle_list.append(angle_)
+
         min_angle = np.sort(angle_list)[1]  # 第二小角，把自己除外
         max_angle = max(angle_list)
         min_index = angle_list.index(min_angle)
@@ -132,6 +144,13 @@ class Scenario(BaseScenario):
     def adversaries(self, world):
         return [agent for agent in world.agents if agent.adversary]
 
+    def set_CL(self, CL_ratio):
+        d_cap = 0.8
+        if CL_ratio < self.cp:
+            self.d_cap = d_cap*(self.cd + (1-self.cd)*CL_ratio/self.cp)
+        else:
+            self.d_cap = d_cap
+    
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
         # Agents are rewarded based on minimum agent distance to each landmark
@@ -143,12 +162,17 @@ class Scenario(BaseScenario):
 
     # individual adversary award
     def adversary_reward(self, agent, world):  # agent here is adversary
+        if self.use_CL:
+            self.set_CL(glv.get_value('CL_ratio'))
+        
+        # print("dcap is {}".format(self.d_cap))
         # Agents are rewarded based on individual position advantage
         r_step = 0
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
         N_adv = len(adversaries)
-        d_i = np.linalg.norm(agent.state.p_pos - target.state.p_pos) - self.d_cap
+        dist_i = np.linalg.norm(agent.state.p_pos - target.state.p_pos)  #与目标的距离
+        d_i = dist_i - self.d_cap
         d_list = [np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap for adv in adversaries]   # left d for all adv
         d_mean = np.mean(d_list)
         sigma_d = np.std(d_list)
@@ -161,23 +185,24 @@ class Scenario(BaseScenario):
         for adv in adversaries:
             if adv == agent:
                 continue
-            d_ = np.sqrt(np.sum(np.square(agent.state.p_pos - adv.state.p_pos)))
+            d_ = np.linalg.norm(agent.state.p_pos - adv.state.p_pos)
             if d_ < d_min:
                 d_min = d_
+        if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
-        k1, k2, k3, k4, k5 = 0.002, 0.5, 0.05, 0.1, 0.05
-        w1, w2, w3, w4, w5 = 0.3, 0.1, 0.15, 0.25, 0.1
+        k1, k2, k3, k4, k5 = 0.08, 0.8, 0.05, 0.1, 0.01
+        w1, w2, w3, w4, w5 = 0.3, 0.1, 0.2, 0.2, 0.1
 
-        r1 = -k1*d_i
-        r2 = np.exp(-k2*(d_i - d_mean)/sigma_d) - 1
-        r3 = min(np.exp(-k3*abs(left_nb_angle-exp_alpha)), np.exp(-k3*abs(right_nb_angle-exp_alpha))) - 1
-        r4 = np.exp(-k4*delta_alpha) - 1
-        r5 = np.exp(-k5*d_min)
+        r1 = -k1*d_i  # d_i范围在0~5
+        r2 = np.exp(-k2*(d_i - d_mean)/sigma_d) - 1  # -1~0
+        r3 = min(np.exp(-k3*abs(left_nb_angle-exp_alpha)), np.exp(-k3*abs(right_nb_angle-exp_alpha))) - 1  # -1~0
+        r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
+        r5 = - np.exp(-k5*d_min)
         r_step = w1*r1+w2*r2+w3*r3+w4*r4+w5*r5
 
-        if d_i < 0:
+        if d_i < 0:  # 在围捕半径之内
             for i, d in enumerate(d_list):
-                if d < 0 and i != agent.idx:
+                if d < 0 and i != agent.i:
                     return 10  # r_help
             return 5  #r_cap
         else:
@@ -185,6 +210,9 @@ class Scenario(BaseScenario):
 
     # observation for adversary agents
     def observation(self, agent, world):
+        if self.use_CL:
+            self.set_CL(glv.get_value('CL_ratio'))
+
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
         dist_vec = agent.state.p_pos - target.state.p_pos

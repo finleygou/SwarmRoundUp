@@ -10,8 +10,12 @@ import torch
 from onpolicy.config import get_config
 from onpolicy.envs.mpe.MPE_env import MPEEnv
 from onpolicy.envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+from onpolicy import global_var as glv
 
 """Train script for MPEs."""
+
+glv._init()
+glv.set_value('CL_ratio',1.0)
 
 def make_train_env(all_args):
     def get_env_fn(rank):

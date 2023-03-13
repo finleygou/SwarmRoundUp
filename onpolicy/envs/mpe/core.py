@@ -220,7 +220,7 @@ class World(object):
             u[i] = agent.action.u
         return u
 
-    def GetClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
+    def Get_antiClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
         # 2个向量模的乘积
         TheNorm = np.linalg.norm(v1)*np.linalg.norm(v2)
         # 叉乘
@@ -242,7 +242,7 @@ class World(object):
                 a_r, a_t= e_r*u[i][0], e_t*u[i][1]
                 a_ = a_r + a_t
                 pos_vec = np.array([np.cos(agent.state.phi), np.sin(agent.state.phi)])
-                delta_theta = self.GetClockAngle(pos_vec, a_)
+                delta_theta = self.Get_antiClockAngle(pos_vec, a_)
                 if 0<delta_theta<=np.pi:
                     pass
                 else:

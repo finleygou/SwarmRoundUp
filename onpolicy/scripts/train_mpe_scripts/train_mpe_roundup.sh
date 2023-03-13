@@ -15,6 +15,6 @@ do
     echo "seed is ${seed}:"
     CUDA_VISIBLE_DEVICES=0 python ../train/train_mpe.py --env_name ${env} --algorithm_name ${algo} --experiment_name ${exp} \
     --scenario_name ${scenario} --num_agents ${num_agents} --num_good_agents ${num_good_agents} --num_adversaries ${num_adversaries} --num_landmarks ${num_landmarks} --seed ${seed} \
-    --n_training_threads 1 --n_rollout_threads 256 --num_mini_batch 16 --episode_length 200 --num_env_steps 5000000 \
+    --n_training_threads 1 --n_rollout_threads 128 --num_mini_batch 16 --episode_length 200 --num_env_steps 5000000 \
     --ppo_epoch 10 --gain 0.01 --lr 2e-4 --critic_lr 2e-4 --wandb_name "xxx" --user_name "finleygou"
 done

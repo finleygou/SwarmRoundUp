@@ -4,6 +4,7 @@ import torch
 from onpolicy.runner.shared.base_runner import Runner
 import wandb
 import imageio
+from onpolicy import global_var as glv
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -17,18 +18,20 @@ class MPERunner(Runner):
         self.warmup()   
 
         start = time.time()
-        episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads
+        episodes = int(self.num_env_steps) // self.episode_length // self.n_rollout_threads  # 5e6 / 200 / 256 [每个线程的episode总数]
 
         for episode in range(episodes):
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)
 
+            glv.set_value('CL_ratio', episode/episodes)  #curriculum learning
+            # print('the global value is {}'.format(glv.get_value('CL_ratio')))
             for step in range(self.episode_length):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states, rnn_states_critic, actions_env = self.collect(step)
 
                 # Obser reward and next obs
-                obs, rewards, dones, infos = self.envs.step(actions_env)
+                obs, rewards, dones, infos = self.envs.step(actions_env)  
 
                 data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states, rnn_states_critic
 
@@ -46,7 +49,7 @@ class MPERunner(Runner):
             if (episode % self.save_interval == 0 or episode == episodes - 1):
                 self.save()
 
-            # log information
+            # log information （for each thread）
             if episode % self.log_interval == 0:
                 end = time.time()
                 print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
@@ -171,7 +174,7 @@ class MPERunner(Runner):
             elif self.eval_envs.action_space[0].__class__.__name__ == 'Discrete':
                 eval_actions_env = np.squeeze(np.eye(self.eval_envs.action_space[0].n)[eval_actions], 2)
             elif self.eval_envs.action_space[0].__class__.__name__ == 'Box':
-                ####################### modify #################################
+                ####################### modify ##############################
                 eval_actions_env = eval_actions 
             else:
                 raise NotImplementedError
