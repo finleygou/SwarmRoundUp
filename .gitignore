@@ -14,4 +14,3 @@ api
 logs
 .nfs*
 *.so
-.out
