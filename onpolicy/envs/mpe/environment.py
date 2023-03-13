@@ -15,7 +15,7 @@ class MultiAgentEnv(gym.Env):
     }
 
     def __init__(self, world, reset_callback=None, reward_callback=None,
-                 observation_callback=None, info_callback=None,  # 以上4个callback是通过MPE_env跑通的
+                 observation_callback=None, info_callback=None,  # 以上callback是通过MPE_env跑通的
                  done_callback=None, post_step_callback=None,  # MPE游戏没用到的参数
                  shared_viewer=True, discrete_action=False):
         # discrete_action为false,即指定动作为Box类型
@@ -135,7 +135,7 @@ class MultiAgentEnv(gym.Env):
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
         reward = np.sum(reward_n)
         if self.shared_reward:
-            reward_n = [[reward]] * self.n
+            reward_n = [[reward]] * self.n  # [[reward] [reward] [reward] ...]
 
         if self.post_step_callback is not None:
             self.post_step_callback(self.world)
