@@ -5,7 +5,7 @@ import numpy as np
 from .multi_discrete import MultiDiscrete
 
 # update bounds to center around agent
-cam_range = 2
+cam_range = 10
 
 # environment for all agents in the multiagent world
 # currently code assumes that no agents will be created/destroyed at runtime!
@@ -273,7 +273,6 @@ class MultiAgentEnv(gym.Env):
 
         for i in range(len(self.viewers)):
             # create viewers (if necessary)
-
             if self.viewers[i] is None:
                 # import rendering only if we need it (and don't import for headless machines)
                 #from gym.envs.classic_control import rendering
@@ -287,15 +286,14 @@ class MultiAgentEnv(gym.Env):
             from . import rendering
             self.render_geoms = []
             self.render_geoms_xform = []
+            self.line = {}
 
             self.comm_geoms = []
-
             for entity in self.world.entities:
                 geom = rendering.make_circle(entity.size)
                 xform = rendering.Transform()
 
                 entity_comm_geoms = []
-
                 if 'agent' in entity.name:
                     geom.set_color(*entity.color, alpha=0.5)
 
@@ -332,6 +330,7 @@ class MultiAgentEnv(gym.Env):
                 self.render_geoms.append(geom)
                 self.render_geoms_xform.append(xform)
                 self.comm_geoms.append(entity_comm_geoms)
+            
             for wall in self.world.walls:
                 corners = ((wall.axis_pos - 0.5 * wall.width, wall.endpoints[0]),
                            (wall.axis_pos - 0.5 *
@@ -353,7 +352,6 @@ class MultiAgentEnv(gym.Env):
             #     viewer.geoms = []
             #     for geom in self.render_geoms:
             #         viewer.add_geom(geom)
-
             for viewer in self.viewers:
                 viewer.geoms = []
                 for geom in self.render_geoms:
@@ -371,12 +369,15 @@ class MultiAgentEnv(gym.Env):
             else:
                 pos = self.agents[i].state.p_pos
             self.viewers[i].set_bounds(
-                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range, pos[1]+cam_range)
+                pos[0]-cam_range-2, pos[0]+cam_range-2, pos[1]-cam_range+8, pos[1]+cam_range+8)
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)
+                self.line[e] = self.viewers[i].draw_line(entity.state.p_pos, entity.state.p_pos+entity.state.p_vel*0.5)
+
                 if 'agent' in entity.name:
                     self.render_geoms[e].set_color(*entity.color, alpha=0.5)
+                    self.line[e].set_color(*entity.color, alpha=0.5)
 
                     if not entity.silent:
                         for ci in range(self.world.dim_c):

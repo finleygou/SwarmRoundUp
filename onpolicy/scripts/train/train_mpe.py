@@ -15,7 +15,7 @@ from onpolicy import global_var as glv
 """Train script for MPEs."""
 
 glv._init()
-glv.set_value('CL_ratio',1.0)
+glv.set_value('CL_ratio',0.0)
 
 def make_train_env(all_args):
     def get_env_fn(rank):

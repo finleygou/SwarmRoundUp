@@ -37,7 +37,7 @@ class Entity(object):
         # name
         self.name = ''
         # properties:
-        self.size = 0.050
+        self.size = 0.0050
         # entity can move / be pushed
         self.movable = False
         # entity collides with others
@@ -117,7 +117,7 @@ class World(object):
         self.cached_dist_vect = None
         self.cached_dist_mag = None
         # zoe 20200420
-        self.world_length = 25
+        self.world_length = 200
         self.world_step = 0
         self.num_agents = 0
         self.num_landmarks = 0
@@ -265,3 +265,4 @@ class World(object):
             else:  # u = [Vx, Vy]
                 agent.state.p_vel = np.array([u[i][0], u[i][1]])
                 agent.state.p_pos += agent.state.p_vel * self.dt
+            # print("agent {} speed is {}".format(agent.i, np.linalg.norm(agent.state.p_vel)))

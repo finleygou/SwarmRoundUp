@@ -1,0 +1,214 @@
+last login: Mon Mar 13 17:13:09 2023 from 127.0.0.1
+dachuang@ubuntu-Super-Server:~$ conda activate marl
+(marl) dachuang@ubuntu-Super-Server:~$ cd /home/sdc/dachuang_space/Project/MAPPO/onpolicy/scripts/train_mpe_scripts/
+(marl) dachuang@ubuntu-Super-Server:/home/sdc/dachuang_space/Project/MAPPO/onpolicy/scripts/train_mpe_scripts$ bash train_mpe_roundup.sh                              env is MPE, scenario is simple_round_up, algo is rmappo, exp is check, max seed is 1
+seed is 1:
+u are choosing to use rmappo, we set use_recurrent_policy to be True
+choose to use gpu...
+wandb: Currently logged in as: finleygou (use `wandb login --relogin` to force relogin)
+wandb: wandb version 0.13.11 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.10.5
+wandb: Syncing run rmappo_check_seed1
+wandb: ⭐️ View project at https://wandb.ai/finleygou/MPE
+wandb: 🚀 View run at https://wandb.ai/finleygou/MPE/runs/33k2u175
+wandb: Run data is saved locally in /home/sdc/dachuang_space/Project/MAPPO/onpolicy/scripts/results/MPE/simple_round_up/rmappo/check/wandb/run-20230313_192717-33k2u175
+wandb: Run `wandb off` to turn off syncing.
+
+
+ Scenario simple_round_up Algo rmappo Exp check updates 0/195 episodes, total num timesteps 25600/5000000, FPS 586.
+
+average episode rewards is -45.579057931900024
+
+ Scenario simple_round_up Algo rmappo Exp check updates 5/195 episodes, total num timesteps 153600/5000000, FPS 588.
+
+average episode rewards is -45.5477237701416
+
+ Scenario simple_round_up Algo rmappo Exp check updates 10/195 episodes, total num timesteps 281600/5000000, FPS 592.
+
+average episode rewards is -45.58548331260681
+
+ Scenario simple_round_up Algo rmappo Exp check updates 15/195 episodes, total num timesteps 409600/5000000, FPS 592.
+
+average episode rewards is -45.95575034618378
+
+ Scenario simple_round_up Algo rmappo Exp check updates 20/195 episodes, total num timesteps 537600/5000000, FPS 595.
+
+average episode rewards is -45.56262195110321
+
+ Scenario simple_round_up Algo rmappo Exp check updates 25/195 episodes, total num timesteps 665600/5000000, FPS 597.
+
+average episode rewards is -44.51850354671478
+
+ Scenario simple_round_up Algo rmappo Exp check updates 30/195 episodes, total num timesteps 793600/5000000, FPS 598.
+
+average episode rewards is -44.53254044055939
+
+ Scenario simple_round_up Algo rmappo Exp check updates 35/195 episodes, total num timesteps 921600/5000000, FPS 598.
+
+average episode rewards is -43.878719210624695
+
+ Scenario simple_round_up Algo rmappo Exp check updates 40/195 episodes, total num timesteps 1049600/5000000, FPS 600.
+
+average episode rewards is -44.17012929916382
+
+ Scenario simple_round_up Algo rmappo Exp check updates 45/195 episodes, total num timesteps 1177600/5000000, FPS 601.
+
+average episode rewards is -43.28142702579498
+
+ Scenario simple_round_up Algo rmappo Exp check updates 50/195 episodes, total num timesteps 1305600/5000000, FPS 601.
+
+average episode rewards is -43.7032550573349
+
+ Scenario simple_round_up Algo rmappo Exp check updates 55/195 episodes, total num timesteps 1433600/5000000, FPS 601.
+
+average episode rewards is -44.87891495227814
+
+ Scenario simple_round_up Algo rmappo Exp check updates 60/195 episodes, total num timesteps 1561600/5000000, FPS 603.
+
+average episode rewards is -43.748852610588074
+
+ Scenario simple_round_up Algo rmappo Exp check updates 65/195 episodes, total num timesteps 1689600/5000000, FPS 603.
+
+average episode rewards is -44.43221390247345
+
+ Scenario simple_round_up Algo rmappo Exp check updates 70/195 episodes, total num timesteps 1817600/5000000, FPS 603.
+
+average episode rewards is -42.499518394470215
+
+ Scenario simple_round_up Algo rmappo Exp check updates 75/195 episodes, total num timesteps 1945600/5000000, FPS 603.
+
+average episode rewards is -43.12842786312103
+
+ Scenario simple_round_up Algo rmappo Exp check updates 80/195 episodes, total num timesteps 2073600/5000000, FPS 604.
+
+average episode rewards is -43.9286470413208
+
+ Scenario simple_round_up Algo rmappo Exp check updates 85/195 episodes, total num timesteps 2201600/5000000, FPS 604.
+
+average episode rewards is -43.62306296825409
+
+ Scenario simple_round_up Algo rmappo Exp check updates 90/195 episodes, total num timesteps 2329600/5000000, FPS 604.
+
+average episode rewards is -44.95386481285095
+
+ Scenario simple_round_up Algo rmappo Exp check updates 95/195 episodes, total num timesteps 2457600/5000000, FPS 604.
+
+average episode rewards is -43.99103224277496
+
+ Scenario simple_round_up Algo rmappo Exp check updates 100/195 episodes, total num timesteps 2585600/5000000, FPS 604.
+
+average episode rewards is -45.65850496292114
+
+ Scenario simple_round_up Algo rmappo Exp check updates 105/195 episodes, total num timesteps 2713600/5000000, FPS 604.
+
+average episode rewards is -44.54069137573242
+
+ Scenario simple_round_up Algo rmappo Exp check updates 110/195 episodes, total num timesteps 2841600/5000000, FPS 605.
+
+average episode rewards is -45.78852653503418
+
+ Scenario simple_round_up Algo rmappo Exp check updates 115/195 episodes, total num timesteps 2969600/5000000, FPS 604.
+
+average episode rewards is -42.88892149925232
+
+ Scenario simple_round_up Algo rmappo Exp check updates 120/195 episodes, total num timesteps 3097600/5000000, FPS 604.
+
+average episode rewards is -44.87180411815643
+
+ Scenario simple_round_up Algo rmappo Exp check updates 125/195 episodes, total num timesteps 3225600/5000000, FPS 604.
+
+average episode rewards is -45.297107100486755
+
+ Scenario simple_round_up Algo rmappo Exp check updates 130/195 episodes, total num timesteps 3353600/5000000, FPS 604.
+
+average episode rewards is -44.55114006996155
+
+ Scenario simple_round_up Algo rmappo Exp check updates 135/195 episodes, total num timesteps 3481600/5000000, FPS 603.
+
+average episode rewards is -44.46784853935242
+
+ Scenario simple_round_up Algo rmappo Exp check updates 140/195 episodes, total num timesteps 3609600/5000000, FPS 603.
+
+average episode rewards is -44.292354583740234
+
+ Scenario simple_round_up Algo rmappo Exp check updates 145/195 episodes, total num timesteps 3737600/5000000, FPS 604.
+
+average episode rewards is -44.16741132736206
+
+ Scenario simple_round_up Algo rmappo Exp check updates 150/195 episodes, total num timesteps 3865600/5000000, FPS 604.
+
+average episode rewards is -44.20234262943268
+
+ Scenario simple_round_up Algo rmappo Exp check updates 155/195 episodes, total num timesteps 3993600/5000000, FPS 604.
+
+average episode rewards is -44.065552949905396
+
+ Scenario simple_round_up Algo rmappo Exp check updates 160/195 episodes, total num timesteps 4121600/5000000, FPS 603.
+
+average episode rewards is -44.29536163806915
+
+ Scenario simple_round_up Algo rmappo Exp check updates 165/195 episodes, total num timesteps 4249600/5000000, FPS 603.
+
+average episode rewards is -44.77166533470154
+
+ Scenario simple_round_up Algo rmappo Exp check updates 170/195 episodes, total num timesteps 4377600/5000000, FPS 603.
+
+average episode rewards is -45.374277234077454
+
+ Scenario simple_round_up Algo rmappo Exp check updates 175/195 episodes, total num timesteps 4505600/5000000, FPS 603.
+
+average episode rewards is -46.128156781196594
+
+ Scenario simple_round_up Algo rmappo Exp check updates 180/195 episodes, total num timesteps 4633600/5000000, FPS 603.
+
+average episode rewards is -45.707812905311584
+
+ Scenario simple_round_up Algo rmappo Exp check updates 185/195 episodes, total num timesteps 4761600/5000000, FPS 603.
+
+average episode rewards is -45.8422064781189
+
+ Scenario simple_round_up Algo rmappo Exp check updates 190/195 episodes, total num timesteps 4889600/5000000, FPS 603.
+
+average episode rewards is -45.32203674316406
+
+wandb: Waiting for W&B process to finish, PID 48209
+wandb: Program ended successfully.
+wandb:
+wandb: Find user logs for this run at: /home/sdc/dachuang_space/Project/MAPPO/onpolicy/scripts/results/MPE/simple_round_up/rmappo/check/wandb/run-20230313_192717-33k2u175/logs/debug.log
+wandb: Find internal logs for this run at: /home/sdc/dachuang_space/Project/MAPPO/onpolicy/scripts/results/MPE/simple_round_up/rmappo/check/wandb/run-20230313_192717-33k2u175/logs/debug-internal.log
+wandb: Run summary:
+wandb:                  value_loss 0.04574
+wandb:                 policy_loss 0.03321
+wandb:                dist_entropy -5.61812
+wandb:             actor_grad_norm 84.03078
+wandb:            critic_grad_norm 0.10083
+wandb:                       ratio 1.08934
+wandb:     average_episode_rewards -45.32204
+wandb:   agent0/individual_rewards -0.22139
+wandb:   agent1/individual_rewards -0.26514
+wandb:   agent2/individual_rewards -0.27802
+wandb:   agent3/individual_rewards -0.26499
+wandb:   agent4/individual_rewards -0.10942
+wandb:                       _step 4889600
+wandb:                    _runtime 8285
+wandb:                  _timestamp 1678715122
+wandb: Run history:
+wandb:                  value_loss █▂▂▂▁▁▁▁▁▁▁▁▁▁▂▂▁▂▂▁▂▁▂▂▂▁▁▂▂▂▁▂▁▁▁▁▁▁▁
+wandb:                 policy_loss █▂▁▁▁▂▂▂▂▂▂▁▃▂▃▁▂▁▁▁▁▁▁▁▁▁▁▁▂▂▁▂▂▁▂▂▂▂▂
+wandb:                dist_entropy █████▇▇▇▇▇▆▆▆▆▆▅▅▅▅▄▄▄▄▃▃▃▃▃▂▂▂▂▂▂▂▁▁▁▁
+wandb:             actor_grad_norm ▁▁▁▁▁▁▂▁▂▂▁▂▂▁▁▁▂▁▁▂▁▁▁▁▂▃▂▃▃▃▃▇▃▄▄█▅█▅
+wandb:            critic_grad_norm █▆▆▆▃▃▄▃▃▃▂▂▂▂▂▃▂▂▂▂▃▂▂▂▂▂▁▂▂▂▂▂▁▂▁▂▁▁▁
+wandb:                       ratio ▆▅▄▃▃▃▄▅▅▅▄█▂▆▁▅▅▅▅▄▅▄▄▂▅▆▂▄▂▁▃▁▂▂▁▃▂▅▁
+wandb:     average_episode_rewards ▂▂▂▁▂▄▄▅▅▆▆▃▆▄█▇▅▆▃▅▂▄▂▇▃▃▄▄▅▅▅▅▅▄▂▁▂▂▃
+wandb:   agent0/individual_rewards ▁▁▁▁▃▄▅▄▅▅▅▄▅▅█▄▆▂▃▇▁▇▂█▄▆▆▆▂▁▇▂▄█▂▇▄▆▄
+wandb:   agent1/individual_rewards ▄▄▅▄▃▅▄▆▅▅▅▅▄▅▃▇▅█▆▄▆▄▆▂▇▅▂▅▂▂▅▂▁▃▂▃▁▂▁
+wandb:   agent2/individual_rewards ▆▆▅▆▄▅▅▆▅▅▄▄▅▅▃▆▄█▆▃▇▄▆▂▅▂▂▄▂▂▂▂▁▁▁▂▁▁▁
+wandb:   agent3/individual_rewards ▇▇▆▆▅▄▅▅▅▅▄▅▆▅▃▅▄▆▆▄█▄▆▂▄▃▂▃▃▃▂▂▂▁▂▁▁▁▁
+wandb:   agent4/individual_rewards ▃▂▃▂▃▃▂▁▂▂▂▁▂▁▂▁▁▁▁▁▁▁▁▃▁▂▄▁▇█▂█▆▂▇▂▅▄▆
+wandb:                       _step ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇███
+wandb:                    _runtime ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇███
+wandb:                  _timestamp ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▇▇▇▇▇▇███
+wandb:
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 3 other file(s)
+wandb:

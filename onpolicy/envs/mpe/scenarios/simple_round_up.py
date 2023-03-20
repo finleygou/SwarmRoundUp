@@ -9,8 +9,8 @@ class Scenario(BaseScenario):
         super().__init__()
         self.cd = 1.5
         self.cp = 0.5
-        self.d_cap = 0.8 # 期望围捕半径,动态变化,在set_CL里面
-        self.use_CL = True  # 是否使用课程式训练
+        self.d_cap = 1.5 # 期望围捕半径,动态变化,在set_CL里面
+        self.use_CL = True  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self,args):
@@ -27,10 +27,10 @@ class Scenario(BaseScenario):
             agent.collide = True
             agent.silent = True if i > 0 else False
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
-            agent.size = 0.075 if agent.adversary else 0.045
+            agent.size = 0.03 if agent.adversary else 0.045
             # agent.accel = 3.0 if agent.adversary else 3.0  # max acc 一阶模型不用设置这个
-            agent.max_speed = 1.6 if agent.adversary else 1.0
-            agent.max_angular = 1.5 if agent.adversary else 0.2
+            agent.max_speed = 2.0 if agent.adversary else 1.0
+            agent.max_angular = 2.0 if agent.adversary else 0.2 # 改成3过但是发散
 
         # make initial conditions
         self.reset_world(world)
@@ -63,7 +63,7 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 1.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
+                r_, theta_ = 1.0*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
                 agent.state.p_pos = np.array([r_*np.cos(theta_), 5+r_*np.cos(theta_)])  # (0,5)为圆心
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy  
@@ -124,7 +124,9 @@ class Scenario(BaseScenario):
             neighbor_vec = adv.state.p_pos-target.state.p_pos
             angle_ = self.Get_antiClockAngle(agent_vec, neighbor_vec)
             if np.isnan(angle_):
-                print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
+                # print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
+                if adv.i==0:
+                    print("target_pos{} target_vel:{}".format(target.state.p_pos, target.state.p_vel))
                 angle_list.append(0)
             else:
                 angle_list.append(angle_)
@@ -133,8 +135,15 @@ class Scenario(BaseScenario):
         max_angle = max(angle_list)
         min_index = angle_list.index(min_angle)
         max_index = angle_list.index(max_angle)
+        # if max_angle>np.pi and min_angle>np.pi: # right most
+        #     max_angle = np.pi*2 - max_angle # min_angle不改变
+        # elif min_angle<np.pi and max_angle<np.pi: 
+        #     max_angle = np.pi*2 - max_angle
+        # else:
+        #     max_angle = np.pi*2 - max_angle
+        max_angle = np.pi*2 - max_angle
 
-        return [max_index, min_index], np.pi*2 - max_angle, min_angle
+        return [max_index, min_index], max_angle, min_angle
 
     # return all agents that are not adversaries
     def good_agents(self, world):
@@ -145,8 +154,9 @@ class Scenario(BaseScenario):
         return [agent for agent in world.agents if agent.adversary]
 
     def set_CL(self, CL_ratio):
-        d_cap = 0.8
+        d_cap = 1.5
         if CL_ratio < self.cp:
+            # print('in here Cd')
             self.d_cap = d_cap*(self.cd + (1-self.cd)*CL_ratio/self.cp)
         else:
             self.d_cap = d_cap
@@ -172,7 +182,7 @@ class Scenario(BaseScenario):
         adversaries = self.adversaries(world)
         N_adv = len(adversaries)
         dist_i = np.linalg.norm(agent.state.p_pos - target.state.p_pos)  #与目标的距离
-        d_i = dist_i - self.d_cap
+        d_i = dist_i - self.d_cap  # 剩余围捕距离
         d_list = [np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap for adv in adversaries]   # left d for all adv
         d_mean = np.mean(d_list)
         sigma_d = np.std(d_list)
@@ -190,17 +200,20 @@ class Scenario(BaseScenario):
                 d_min = d_
         if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
-        k1, k2, k3, k4, k5 = 0.08, 0.8, 0.05, 0.1, 0.01
-        w1, w2, w3, w4, w5 = 0.3, 0.1, 0.2, 0.2, 0.1
+        k1, k2, k3, k4, k5 = 0.35, 0.6, 0.15, 0.2, 2.31  # k1 0.15
+        w1, w2, w3, w4, w5 = 0.35, 0.3, 0.2, 0.0, 0.15
 
-        r1 = -k1*d_i  # d_i范围在0~5
-        r2 = np.exp(-k2*(d_i - d_mean)/sigma_d) - 1  # -1~0
+        r1 = np.exp(-k1*abs(d_i))-1  # d_i范围在0~5
+        r2 = np.exp(-k2*abs(d_i - d_mean)/sigma_d) - 1  # -1~0
         r3 = min(np.exp(-k3*abs(left_nb_angle-exp_alpha)), np.exp(-k3*abs(right_nb_angle-exp_alpha))) - 1  # -1~0
-        r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
-        r5 = - np.exp(-k5*d_min)
-        r_step = w1*r1+w2*r2+w3*r3+w4*r4+w5*r5
+        # r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
+        r5 = - 0.8*np.exp(-k5*(d_min-1)) if d_min > 1 else 0.2*d_min-1  # 分段函数
+        r_step = w1*r1+w2*r2+w3*r3+w5*r5
+
+        # print("reward for agent{} is :{:.3f}， left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
 
         if d_i < 0:  # 在围捕半径之内
+            # 不用有几个完成就几个5(5*n)的原因：利于收敛。每个都是10，有封顶，不然会增加reward空间。
             for i, d in enumerate(d_list):
                 if d < 0 and i != agent.i:
                     return 10  # r_help
@@ -258,6 +271,20 @@ class Scenario(BaseScenario):
 
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries):
+    set_CL = True
+    Cp = 0.5
+    Cv = 0.2
+    if set_CL:
+        max_v = 1.0
+        CL_ratio = glv.get_value('CL_ratio')
+        if CL_ratio < Cp:  # Cp
+            max_speed = max_v*(Cv + (1-Cv)*CL_ratio/Cp)  # Cv = 0.2
+            # print('in here Cv')
+        else:
+            max_speed = max_v
+    else:
+        max_speed = agent.max_speed
+
     action = agent.action
     escape_v = np.array([0, 0])
     for adv in adversaries:
@@ -266,8 +293,8 @@ def escape_policy(agent, adversaries):
         escape_v = escape_v+d_vec_ij
     
     # 超过最大速度,归一化
-    if np.linalg.norm(escape_v) > agent.max_speed:
-        escape_v = escape_v/np.linalg.norm(escape_v) * agent.max_speed
+    if np.linalg.norm(escape_v) > max_speed:
+        escape_v = escape_v/np.linalg.norm(escape_v) * max_speed
     
     action.u = escape_v  # 1*2
     return action

@@ -17,8 +17,8 @@ class MLPLayer(nn.Module):
 
         self.fc1 = nn.Sequential(
             init_(nn.Linear(input_dim, hidden_size)), active_func, nn.LayerNorm(hidden_size))
-        self.fc_h = nn.Sequential(init_(
-            nn.Linear(hidden_size, hidden_size)), active_func, nn.LayerNorm(hidden_size))
+        self.fc_h = nn.Sequential(
+            init_(nn.Linear(hidden_size, hidden_size)), active_func, nn.LayerNorm(hidden_size))
         self.fc2 = get_clones(self.fc_h, self._layer_N)
 
     def forward(self, x):

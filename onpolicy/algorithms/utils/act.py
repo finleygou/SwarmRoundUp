@@ -83,8 +83,9 @@ class ACTLayer(nn.Module):
             action = action_logit.mode() if deterministic else action_logit.sample()
             action_log_prob = action_logit.log_probs(action)
             # 动作映射到-1~1
-            action = torch.softmax(action, dim=1)
-            action = 2*action-1
+            # action = torch.softmax(action, dim=1)  # 0-1. 错误！不能用这句话！
+            # action = 2*action-1
+            action = torch.clamp(action, -1, 1, out=None)  # constrain to -1~1
             actions.append(action)
             action_log_probs.append(action_log_prob)
             # print('111111111', action_logit, action, action_log_prob)

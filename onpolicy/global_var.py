@@ -2,7 +2,7 @@
  
 def _init():#初始化
     global _global_dict
-    _global_dict = {'CL_ratio':1.0}
+    _global_dict = {'CL_ratio':0.0}
  
 def set_value(key,value):
     """ 定义一个全局变量 """
