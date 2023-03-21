@@ -161,6 +161,9 @@ class R_MAPPO():
 
         self.policy.critic_optimizer.step()
 
+        assert torch.isnan(value_loss).sum() == 0, print(value_loss)
+        assert torch.isnan(policy_loss).sum() == 0, print(policy_loss)
+
         return value_loss, critic_grad_norm, policy_loss, dist_entropy, actor_grad_norm, imp_weights
 
     def train(self, buffer, update_actor=True):

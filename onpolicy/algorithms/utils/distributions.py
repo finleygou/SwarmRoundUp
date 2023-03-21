@@ -76,10 +76,10 @@ class DiagGaussian(nn.Module):
         def init_(m): 
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain)
 
-        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
-        self.logstd = AddBias(torch.zeros(num_outputs))
+        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))  # [mu1, mu2]
+        self.logstd = AddBias(torch.zeros(num_outputs))  # [sigma1, sigma2]
 
-    def forward(self, x):  # x就是 miu1, sigma1, miu2, sigma2 
+    def forward(self, x):  # x是 上一层的输出向量。作为该层输入 
         action_mean = self.fc_mean(x)
 
         #  An ugly hack for my KFAC implementation.
@@ -88,7 +88,9 @@ class DiagGaussian(nn.Module):
             zeros = zeros.cuda()
 
         action_logstd = self.logstd(zeros)
-        return FixedNormal(action_mean, action_logstd.exp())
+        return FixedNormal(action_mean, action_logstd.exp())  
+        # action_mean是期望的数组，action_logstd.exp()是方差的数组
+        # exp是e指数
 
 
 class Bernoulli(nn.Module):
