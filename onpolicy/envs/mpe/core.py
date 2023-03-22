@@ -91,6 +91,7 @@ class Agent(Entity):
         self.action_callback = None
         # zoe 20200420
         self.goal = None
+        self.done = False
 
 # multi-agent world
 class World(object):

@@ -7,9 +7,11 @@ class Scenario(BaseScenario):
     
     def __init__(self) -> None:
         super().__init__()
-        self.cd = 1.5
+        self.cd = 1.0
         self.cp = 0.5
+        self.cr = 0.5
         self.d_cap = 1.5 # 期望围捕半径,动态变化,在set_CL里面
+        self.init_target_pos = 5.0
         self.use_CL = True  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
@@ -63,8 +65,12 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 1.0*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
-                agent.state.p_pos = np.array([r_*np.cos(theta_), 5+r_*np.cos(theta_)])  # (0,5)为圆心
+                r_, theta_ = 0.2*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
+                if self.use_CL:
+                    init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
+                else:
+                    init_dist = self.init_target_pos
+                agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.cos(theta_)])  # (0,5)为圆心
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy  
                 # callback只调用函数名。escape_policy的出入参数应该与agent.action_callback()保持一致
@@ -101,7 +107,7 @@ class Scenario(BaseScenario):
 
     def GetAcuteAngle(self, v1, v2):  # 计算较小夹角(0-pi)
         norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
-        if norm1 == 0 or norm2 == 0:
+        if norm1 < 1e-3 or norm2 < 1e-3:
             # print('0 in denominator ')
             cos_ = 1  # 初始化速度为0，会出现分母为零
         else:  
@@ -198,17 +204,17 @@ class Scenario(BaseScenario):
             d_ = np.linalg.norm(agent.state.p_pos - adv.state.p_pos)
             if d_ < d_min:
                 d_min = d_
-        if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
+        # if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
-        k1, k2, k3, k4, k5 = 0.35, 0.6, 0.15, 0.2, 2.31  # k1 0.15
-        w1, w2, w3, w4, w5 = 0.35, 0.3, 0.2, 0.0, 0.15
+        k1, k2, k3, k4, k5 = 0.35, 0.6, 0.2, 0.2, 2.31  # k1 0.15
+        w1, w2, w3, w4, w5 = 0.3, 0.1, 0.15, 0.25, 0.2
 
         r1 = np.exp(-k1*abs(d_i))-1  # d_i范围在0~5
         r2 = np.exp(-k2*abs(d_i - d_mean)/sigma_d) - 1  # -1~0
         r3 = min(np.exp(-k3*abs(left_nb_angle-exp_alpha)), np.exp(-k3*abs(right_nb_angle-exp_alpha))) - 1  # -1~0
-        # r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
+        r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
         r5 = - 0.8*np.exp(-k5*(d_min-1)) if d_min > 1 else 0.2*d_min-1  # 分段函数
-        r_step = w1*r1+w2*r2+w3*r3+w5*r5
+        r_step = w1*r1+w2*r2+w3*r3+w4*r4+w5*r5
 
         # print("reward for agent{} is :{:.3f}， left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
 
@@ -217,7 +223,10 @@ class Scenario(BaseScenario):
             for i, d in enumerate(d_list):
                 if d < 0 and i != agent.i:
                     return 10  # r_help
-            return 5  #r_cap
+            # if abs(left_nb_angle-exp_alpha) < 0.4 and abs(right_nb_angle-exp_alpha) < 0.4:
+            #     return 10
+            else:
+                return 5  #r_cap
         else:
             return r_step  #r_step
 
@@ -239,7 +248,7 @@ class Scenario(BaseScenario):
         # print(o_loc)
         # calculate o_ext：
         _, left_nb_angle, right_nb_angle = self.find_neighbors(agent, adversaries, target)  # nb:neighbor
-        delta_alpha = abs(left_nb_angle - right_nb_angle)
+        delta_alpha = left_nb_angle - right_nb_angle
         d_list = [np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap for adv in adversaries]   # left d for all adv
         d_mean = np.mean(d_list)
         o_ext = [delta_alpha, d_mean]  # 1*2
@@ -247,23 +256,24 @@ class Scenario(BaseScenario):
         o_ij = np.array([])  # 1*N*5
         for adv_j in adversaries:
             if adv_j is agent: continue
-            [id1, id2], _, _ = self.find_neighbors(agent, adversaries, target)
-            if adv_j.i == id1 or adv_j.i == id2: # 只考虑邻居的
-                d_ij_vec = agent.state.p_pos - adv_j.state.p_pos
-                d_ij = np.linalg.norm(d_ij_vec)
-                Q_ij = self.GetAcuteAngle(-d_ij_vec, agent.state.p_vel)
-                Q_ji = self.GetAcuteAngle(adv_j.state.p_vel, d_ij_vec)
-                dist_j_vec = adv_j.state.p_pos - target.state.p_pos
-                d_j = np.linalg.norm(dist_j_vec) - self.d_cap
-                delta_d_ij = d_i - d_j
-                alpha_ij = self.GetAcuteAngle(dist_vec, dist_j_vec)
-                o_ij = np.concatenate([o_ij]+[np.array([d_ij, Q_ij, Q_ji, delta_d_ij, alpha_ij])])
+            # [id1, id2], _, _ = self.find_neighbors(agent, adversaries, target)
+            # if adv_j.i == id1 or adv_j.i == id2: # 只考虑邻居的
+            d_ij_vec = agent.state.p_pos - adv_j.state.p_pos
+            d_ij = np.linalg.norm(d_ij_vec)
+            Q_ij = self.GetAcuteAngle(-d_ij_vec, agent.state.p_vel)
+            Q_ji = self.GetAcuteAngle(adv_j.state.p_vel, d_ij_vec)
+            dist_j_vec = adv_j.state.p_pos - target.state.p_pos
+            d_j = np.linalg.norm(dist_j_vec) - self.d_cap
+            delta_d_ij = d_i - d_j
+            alpha_ij = self.GetAcuteAngle(dist_vec, dist_j_vec)
+            o_ij = np.concatenate([o_ij]+[np.array([d_ij, Q_ij, Q_ji, delta_d_ij, alpha_ij])])
         
+        assert len(o_ij) == 20, ('o_ij length not right')
         # 只取邻居的特征
         # print(o_ij)
-        if len(o_ij) == 10:
-            o_ij = 0.5*(o_ij[0:5]+o_ij[5:10])
-        else: print('o_ij length not right')
+        # if len(o_ij) == 10:
+        #     o_ij = 0.5*(o_ij[0:5]+o_ij[5:10])
+        # else: print('o_ij length not right')
 
         obs_concatenate = np.concatenate([o_loc] + [o_ext] + [o_ij]) # concatenate要用两层括号
         # print(obs_concatenate)
@@ -292,6 +302,8 @@ def escape_policy(agent, adversaries):
         d_vec_ij = d_vec_ij / np.square(np.linalg.norm(d_vec_ij))
         escape_v = escape_v+d_vec_ij
     
+    escape_v = escape_v/np.square(np.linalg.norm(escape_v))  # 原文这么设的，有点不合理
+
     # 超过最大速度,归一化
     if np.linalg.norm(escape_v) > max_speed:
         escape_v = escape_v/np.linalg.norm(escape_v) * max_speed
