@@ -80,7 +80,7 @@ class ACTLayer(nn.Module):
             actions = []
             action_log_probs = []
             action_logit = self.action_out(x)
-            action = action_logit.mode() if deterministic else action_logit.sample()
+            action = action_logit.mode() if deterministic else action_logit.sample()  # mode: 取均值
             action_log_prob = action_logit.log_probs(action)
             # 动作映射到-1~1
             # action = torch.softmax(action, dim=1)  # 0-1. 错误！不能用这句话！
