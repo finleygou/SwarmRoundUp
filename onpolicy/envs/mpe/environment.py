@@ -31,7 +31,7 @@ class MultiAgentEnv(gym.Env):
         self.reward_callback = reward_callback
         self.observation_callback = observation_callback
         self.info_callback = info_callback
-        self.done_callback = done_callback
+        self.done_callback = done_callback  # dont know why
 
         self.post_step_callback = post_step_callback
 
@@ -115,11 +115,19 @@ class MultiAgentEnv(gym.Env):
         done_n = []
         info_n = []
         self.agents = self.world.policy_agents  # adversaries only
+        
+        terminate = []
+        for i, agent in enumerate(self.agents):
+            terminate.append(agent.done)
+        # print('done in env:', terminate)
+        done = all(terminate) # False
         # set action for each agent
         for i, agent in enumerate(self.agents):  # adversaries only
-            self._set_action(action_n[i], agent, self.action_space[i])
+            self._set_action(action_n[i], agent, self.action_space[i], done)
+        # pre set terminate
+        
         # advance world state
-        self.world.step()  # core.step()
+        self.world.step()  # core.step(), after done, all stop. 不能传参
 
         # record observation for each agent
         for i, agent in enumerate(self.agents):
@@ -186,7 +194,7 @@ class MultiAgentEnv(gym.Env):
         return self.reward_callback(agent, self.world)
 
     # set env action for a particular agent
-    def _set_action(self, action, agent, action_space, time=None):
+    def _set_action(self, action, agent, action_space, done, time=None):
         agent.action.u = np.zeros(self.world.dim_p)
         agent.action.c = np.zeros(self.world.dim_c)
         # process action
@@ -226,7 +234,10 @@ class MultiAgentEnv(gym.Env):
                         p = np.argmax(action[0][0:self.world.dim_p])
                         action[0][:] = 0.0
                         action[0][p] = 1.0
-                    agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    if done:
+                        agent.action.u = np.array([0.0, 0.0])
+                    else:
+                        agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
                     d = self.world.dim_p
                     # print("action in env is {}".format(action))
             # print("1 action in env is {}".format(action))

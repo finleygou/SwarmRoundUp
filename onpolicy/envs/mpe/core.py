@@ -91,6 +91,7 @@ class Agent(Entity):
         self.action_callback = None
         # zoe 20200420
         self.goal = None
+        # finley
         self.done = False
 
 # multi-agent world
@@ -242,13 +243,17 @@ class World(object):
                 e_t = np.array([e_r[0]*np.cos(np.pi/2)-e_r[1]*np.sin(np.pi/2), e_r[0]*np.sin(np.pi/2)+e_r[1]*np.cos(np.pi/2)])  # 逆时针旋转90
                 a_r, a_t= e_r*u[i][0], e_t*u[i][1]
                 a_ = a_r + a_t
+                a_norm = np.linalg.norm(a_)
                 pos_vec = np.array([np.cos(agent.state.phi), np.sin(agent.state.phi)])
-                delta_theta = self.Get_antiClockAngle(pos_vec, a_)
+                if a_norm < 1e-4:
+                    delta_theta = 0.0
+                else:
+                    delta_theta = self.Get_antiClockAngle(pos_vec, a_)
                 if 0<delta_theta<=np.pi:
                     pass
                 else:
                     delta_theta -= np.pi*2 
-                v_ = agent.max_speed * np.linalg.norm(a_)  # 正
+                v_ = agent.max_speed * a_norm  # 正
                 w_ = agent.max_angular * delta_theta/(np.pi)  # 可正可负
                 # update phi
                 agent.state.p_omg = w_
