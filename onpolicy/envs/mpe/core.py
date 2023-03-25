@@ -228,7 +228,13 @@ class World(object):
         # 叉乘
         rho = np.arcsin(np.cross(v1, v2)/TheNorm)
         # 点乘
-        theta = np.arccos(np.dot(v1,v2)/TheNorm)
+        cos_ = np.dot(v1, v2)/TheNorm
+        if 1.0 < cos_: 
+            cos_ = 1.0
+            rho = 0
+        elif cos_ < -1.0: 
+            cos_ = -1.0
+        theta = np.arccos(cos_)
         if rho < 0:
             return np.pi*2 - theta
         else:

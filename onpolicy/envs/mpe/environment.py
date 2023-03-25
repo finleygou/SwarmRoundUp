@@ -120,11 +120,9 @@ class MultiAgentEnv(gym.Env):
         for i, agent in enumerate(self.agents):
             terminate.append(agent.done)
         # print('done in env:', terminate)
-        done = all(terminate) # False
         # set action for each agent
         for i, agent in enumerate(self.agents):  # adversaries only
-            self._set_action(action_n[i], agent, self.action_space[i], done)
-        # pre set terminate
+            self._set_action(action_n[i], agent, self.action_space[i])
         
         # advance world state
         self.world.step()  # core.step(), after done, all stop. 不能传参
@@ -139,6 +137,10 @@ class MultiAgentEnv(gym.Env):
             if 'fail' in env_info.keys():
                 info['fail'] = env_info['fail']
             info_n.append(info)
+        # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
+        if all(terminate)==True:
+            print('terminate triggered')
+            # done_n = terminate
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
         reward = np.sum(reward_n)
@@ -194,7 +196,7 @@ class MultiAgentEnv(gym.Env):
         return self.reward_callback(agent, self.world)
 
     # set env action for a particular agent
-    def _set_action(self, action, agent, action_space, done, time=None):
+    def _set_action(self, action, agent, action_space, time=None):
         agent.action.u = np.zeros(self.world.dim_p)
         agent.action.c = np.zeros(self.world.dim_c)
         # process action
@@ -234,10 +236,10 @@ class MultiAgentEnv(gym.Env):
                         p = np.argmax(action[0][0:self.world.dim_p])
                         action[0][:] = 0.0
                         action[0][p] = 1.0
-                    if done:
-                        agent.action.u = np.array([0.0, 0.0])
-                    else:
-                        agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    # if done: # 不能给输出值置零，否则会影响actor网络参数
+                    #     agent.action.u = np.array([0.0, 0.0])
+                    # else:
+                    agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
                     d = self.world.dim_p
                     # print("action in env is {}".format(action))
             # print("1 action in env is {}".format(action))

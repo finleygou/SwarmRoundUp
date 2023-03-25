@@ -74,6 +74,7 @@ class Scenario(BaseScenario):
                 agent.state.p_pos = np.array([0.0, init_dist+(r_-0.5)*2])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy
+                agent.done = False
                 # callback只调用函数名。escape_policy的出入参数应该与agent.action_callback()保持一致
                 # print('111111', agent.state.p_pos)
 
@@ -143,12 +144,12 @@ class Scenario(BaseScenario):
             if np.isnan(angle_):
                 # print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
                 if adv.i==0:
-                    print("tp{.3f} tv:{.3f}".format(target.state.p_pos, target.state.p_vel))
-                    print("0p{.1f} 0v:{.1f}".format(adversary[0].state.p_pos, adversary[0].state.p_vel))
-                    print("1p{.3f} 1v:{.3f}".format(adversary[1].state.p_pos, adversary[1].state.p_vel))
-                    print("2p{.3f} 2v:{.3f}".format(adversary[2].state.p_pos, adversary[2].state.p_vel))
-                    print("3p{.3f} 3v:{.3f}".format(adversary[3].state.p_pos, adversary[3].state.p_vel))
-                    print("4p{.3f} 4v:{.3f}".format(adversary[4].state.p_pos, adversary[4].state.p_vel))
+                    print("tp{:.3f} tv:{:.3f}".format(target.state.p_pos, target.state.p_vel))
+                    print("0p{:.1f} 0v:{:.1f}".format(adversary[0].state.p_pos, adversary[0].state.p_vel))
+                    print("1p{:.3f} 1v:{:.3f}".format(adversary[1].state.p_pos, adversary[1].state.p_vel))
+                    print("2p{:.3f} 2v:{:.3f}".format(adversary[2].state.p_pos, adversary[2].state.p_vel))
+                    print("3p{:.3f} 3v:{:.3f}".format(adversary[3].state.p_pos, adversary[3].state.p_vel))
+                    print("4p{:.3f} 4v:{:.3f}".format(adversary[4].state.p_pos, adversary[4].state.p_vel))
                 angle_list.append(0)
             else:
                 angle_list.append(angle_)
@@ -197,14 +198,15 @@ class Scenario(BaseScenario):
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
         N_adv = len(adversaries)
-        dist_i = np.linalg.norm(agent.state.p_pos - target.state.p_pos)  #与目标的距离
+        dist_i_vec = target.state.p_pos - agent.state.p_pos
+        dist_i = np.linalg.norm(dist_i_vec)  #与目标的距离
         d_i = dist_i - self.d_cap  # 剩余围捕距离
         d_list = [np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap for adv in adversaries]   # left d for all adv
         d_mean = np.mean(d_list)
         sigma_d = np.std(d_list)
         exp_alpha = np.pi*2/N_adv
         # find neighbors (方位角之间不存在别的agent)
-        _, left_nb_angle, right_nb_angle = self.find_neighbors(agent, adversaries, target)  # nb:neighbor
+        nb_idx, left_nb_angle, right_nb_angle = self.find_neighbors(agent, adversaries, target)  # nb:neighbor
         delta_alpha = abs(left_nb_angle - right_nb_angle)
         # find min d between allies
         d_min = 20
@@ -216,6 +218,21 @@ class Scenario(BaseScenario):
                 d_min = d_
         if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
+        ####### calculate dones ########
+        dones = []
+        for adv in adversaries:
+            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
+            _, left_nb_angle_, right_nb_angle_ = self.find_neighbors(adv, adversaries, target)
+            if abs(di_adv)<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+                dones.append(True)
+            else: dones.append(False)
+        if all(dones)==True:  
+            agent.done = True
+            target.done = True
+        else:  agent.done = False
+        #################################
+
+        '''
         k1, k2, k3, k4, k5 = 0.35, 0.6, 0.2, 0.2, 2.31  # k1 0.15
         w1, w2, w3, w4, w5 = 0.3, 0.1, 0.15, 0.25, 0.2
 
@@ -226,26 +243,43 @@ class Scenario(BaseScenario):
         r5 = - 0.8*np.exp(-k5*(d_min-1)) if d_min > 1 else 0.2*d_min-1  # 分段函数
         r_step = w1*r1+w2*r2+w3*r3+w4*r4+w5*r5
         # print("reward for agent{} is :{:.3f}， left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
-
-        ####### calculate dones ########
-        dones = []
-        for adv in adversaries:
-            if d_i<0 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
-                dones.append(True)
-            else: dones.append(False)
-        if all(dones)==True:  agent.done = True
-        else:  agent.done = False
-        #################################
+        
 
         if d_i < 0:  # 在围捕半径之内
             # 不用有几个完成就几个5(5*n)的原因：利于收敛。每个都是10，有封顶，不然会增加reward空间。
             for i, d in enumerate(d_list):
                 if d < 0 and i != agent.i:
                     return 10  # r_help
-            else:
-                return 5  #r_cap
+            return 5  #r_cap
         else:
             return r_step  #r_step
+        '''
+        
+        k1, k2 = 0.2, 0.1
+        w1, w2 = 0.4, 0.6
+        # formaion reward r_f
+        form_vec = np.array([0.0, 0.0])
+        for adv in adversaries:
+            form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
+        r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+        # distance coordination reward r_d
+        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
+        
+        # k1, k2 = 0.2, 0.35
+        # w1, w2 = 0.4, 0.6
+        # left_nb, right_nb = adversaries[nb_idx[0]], adversaries[nb_idx[1]]
+        # lb_vec = left_nb.state.p_pos-target.state.p_pos
+        # rb_vec = right_nb.state.p_pos-target.state.p_pos
+        # form_vec = dist_i_vec*2*np.cos(exp_alpha) + lb_vec + rb_vec
+        # r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+        # r_d = np.exp(-k2*abs(d_i))-1
+        
+        r_step = w1*r_f + w2*r_d
+
+        if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
+            return 1    # terminate reward
+        else:
+            return r_step
 
     # observation for adversary agents
     def observation(self, agent, world):
@@ -321,9 +355,8 @@ def escape_policy(agent, adversaries):
     set_CL = True
     Cp = 0.5
     Cv = 0.2
-    dones = [adv.done for adv in adversaries]
     action = agent.action
-    if all(dones)==True:  # terminate
+    if agent.done==True:  # terminate
         escape_v = np.array([0.0, 0.0])
     else:
         if set_CL:
