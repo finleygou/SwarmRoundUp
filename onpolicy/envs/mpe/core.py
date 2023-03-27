@@ -37,7 +37,7 @@ class Entity(object):
         # name
         self.name = ''
         # properties:
-        self.size = 0.0050
+        self.size = 1.0
         # entity can move / be pushed
         self.movable = False
         # entity collides with others

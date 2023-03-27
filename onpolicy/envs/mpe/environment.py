@@ -5,7 +5,7 @@ import numpy as np
 from .multi_discrete import MultiDiscrete
 
 # update bounds to center around agent
-cam_range = 10
+cam_range = 7
 
 # environment for all agents in the multiagent world
 # currently code assumes that no agents will be created/destroyed at runtime!
@@ -382,7 +382,7 @@ class MultiAgentEnv(gym.Env):
             else:
                 pos = self.agents[i].state.p_pos
             self.viewers[i].set_bounds(
-                pos[0]-cam_range-2, pos[0]+cam_range-2, pos[1]-cam_range+8, pos[1]+cam_range+8)
+                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+6, pos[1]+cam_range+6)
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)

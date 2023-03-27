@@ -216,7 +216,7 @@ class Scenario(BaseScenario):
             d_ = np.linalg.norm(agent.state.p_pos - adv.state.p_pos)
             if d_ < d_min:
                 d_min = d_
-        if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
+        # if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
         ####### calculate dones ########
         dones = []
@@ -265,18 +265,9 @@ class Scenario(BaseScenario):
         # distance coordination reward r_d
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
         
-        # k1, k2 = 0.2, 0.35
-        # w1, w2 = 0.4, 0.6
-        # left_nb, right_nb = adversaries[nb_idx[0]], adversaries[nb_idx[1]]
-        # lb_vec = left_nb.state.p_pos-target.state.p_pos
-        # rb_vec = right_nb.state.p_pos-target.state.p_pos
-        # form_vec = dist_i_vec*2*np.cos(exp_alpha) + lb_vec + rb_vec
-        # r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
-        # r_d = np.exp(-k2*abs(d_i))-1
-        
         r_step = w1*r_f + w2*r_d
 
-        if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
+        if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
             return 1    # terminate reward
         else:
             return r_step
