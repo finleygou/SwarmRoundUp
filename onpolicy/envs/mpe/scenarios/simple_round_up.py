@@ -223,12 +223,14 @@ class Scenario(BaseScenario):
         for adv in adversaries:
             di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
             _, left_nb_angle_, right_nb_angle_ = self.find_neighbors(adv, adversaries, target)
+            # print('i:{}, leftE:{}, rightE:{}'.format(adv.i, abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
             if abs(di_adv)<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
                 dones.append(True)
             else: dones.append(False)
         if all(dones)==True:  
             agent.done = True
             target.done = True
+            # return 10
         else:  agent.done = False
         #################################
 
@@ -263,12 +265,12 @@ class Scenario(BaseScenario):
             form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
         r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
         # distance coordination reward r_d
-        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
+        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1
         
         r_step = w1*r_f + w2*r_d
 
         if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
-            return 1    # terminate reward
+            return 1 # 5    # terminate reward
         else:
             return r_step
 

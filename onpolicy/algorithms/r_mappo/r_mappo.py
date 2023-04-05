@@ -222,7 +222,7 @@ class R_MAPPO():
         return train_info
 
     def prep_training(self):
-        self.policy.actor.train()
+        self.policy.actor.train()  # actor is a nn module network. it is trainable.
         self.policy.critic.train()
 
     def prep_rollout(self):

@@ -303,7 +303,7 @@ class MultiAgentEnv(gym.Env):
 
             self.comm_geoms = []
             for entity in self.world.entities:
-                geom = rendering.make_circle(entity.size)
+                geom = rendering.make_circle(0.1) # entity.size
                 xform = rendering.Transform()
 
                 entity_comm_geoms = []
