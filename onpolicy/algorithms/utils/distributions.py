@@ -29,14 +29,14 @@ class FixedCategorical(torch.distributions.Categorical):
 
 
 # Normal
-class FixedNormal(torch.distributions.Normal):
+class FixedNormal(torch.distributions.Normal):  # 可以sample()
     def log_probs(self, actions):
         return super().log_prob(actions).sum(-1, keepdim=True)
 
     def entropy(self):
         return super().entropy().sum(-1)
 
-    def mode(self):
+    def mode(self):  # deterministic
         return self.mean
 
 

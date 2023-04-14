@@ -9,6 +9,7 @@ class ACTLayer(nn.Module):
     :param inputs_dim: (int) dimension of network input.
     :param use_orthogonal: (bool) whether to use orthogonal initialization.
     :param gain: (float) gain of the output layer of the network.
+    input: 32,  output: 4
     """
     def __init__(self, action_space, inputs_dim, use_orthogonal, gain): # action_space: Box(2,)
         super(ACTLayer, self).__init__()

@@ -79,7 +79,7 @@ class Runner(object):
                             self.envs.observation_space[0],
                             share_observation_space,
                             self.envs.action_space[0],  # [[] [] []]中的一个
-                            device = self.device)  # observation_space, action_space都是1*2的list
+                            device = self.device)  # observation_space, action_space都是1*n的list。
 
         if self.model_dir is not None:
             self.restore()
