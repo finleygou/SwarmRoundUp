@@ -81,12 +81,13 @@ class Runner(object):
                             self.envs.action_space[0],  # [[] [] []]中的一个
                             device = self.device)  # observation_space, action_space都是1*n的list。
 
-        if self.model_dir is not None:
-            self.restore()
-
         # algorithm
         self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
-        
+
+        if self.model_dir is not None:
+            self.restore()
+            self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
+            
         # buffer
         self.buffer = SharedReplayBuffer(self.all_args,
                                         self.num_agents,

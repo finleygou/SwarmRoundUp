@@ -17,6 +17,7 @@ class Scenario(BaseScenario):
     # 设置agent,landmark的数量，运动属性。
     def make_world(self,args):
         world = World()
+        world.collaborative = True
         # set any world properties first
         num_good_agents = 1 # args.num_good_agents
         num_adversaries = 5 # args.num_adversaries
@@ -230,7 +231,7 @@ class Scenario(BaseScenario):
         if all(dones)==True:  
             agent.done = True
             target.done = True
-            # return 10
+            return 5
         else:  agent.done = False
         #################################
 
@@ -244,11 +245,11 @@ class Scenario(BaseScenario):
         r4 = np.exp(-k4*delta_alpha) - 1  # -1~0
         r5 = - 0.8*np.exp(-k5*(d_min-1)) if d_min > 1 else 0.2*d_min-1  # 分段函数
         r_step = w1*r1+w2*r2+w3*r3+w4*r4+w5*r5
-        # print("reward for agent{} is :{:.3f}， left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
+        # print("reward for agent{} is :{:.3f}, left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
         
 
         if d_i < 0:  # 在围捕半径之内
-            # 不用有几个完成就几个5(5*n)的原因：利于收敛。每个都是10，有封顶，不然会增加reward空间。
+            # 不用有几个完成就几个5(5*n)的原因:利于收敛。每个都是10,有封顶,不然会增加reward空间。
             for i, d in enumerate(d_list):
                 if d < 0 and i != agent.i:
                     return 10  # r_help
@@ -257,6 +258,8 @@ class Scenario(BaseScenario):
             return r_step  #r_step
         '''
         
+
+        '''
         k1, k2 = 0.2, 0.1
         w1, w2 = 0.4, 0.6
         # formaion reward r_f
@@ -268,6 +271,21 @@ class Scenario(BaseScenario):
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1
         
         r_step = w1*r_f + w2*r_d
+        '''
+
+        k1, k2, k3 = 0.2, 0.1, 2.0
+        w1, w2, w3 = 0.4, 0.45, 0.15
+        # formaion reward r_f
+        form_vec = np.array([0.0, 0.0])
+        for adv in adversaries:
+            form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
+        r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+        # distance coordination reward r_d
+        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
+        # neighbor coordination reward r_l
+        r_l = 2/(1+np.exp(-k3*d_min))-2
+
+        r_step = w1*r_f + w2*r_d + w3*r_l
 
         if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
             return 1 # 5    # terminate reward

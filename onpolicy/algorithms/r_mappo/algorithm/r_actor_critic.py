@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 from onpolicy.algorithms.utils.util import init, check
 from onpolicy.algorithms.utils.cnn import CNNBase
-from onpolicy.algorithms.utils.mlp import MLPBase
+# from onpolicy.algorithms.utils.mlp import MLPBase
+from onpolicy.algorithms.utils.roundup_actor_mlp import A_MLPBase
+from onpolicy.algorithms.utils.roundup_critic_mlp import C_MLPBase
 from onpolicy.algorithms.utils.rnn import RNNLayer
 from onpolicy.algorithms.utils.act import ACTLayer
 from onpolicy.algorithms.utils.popart import PopArt
@@ -31,13 +33,13 @@ class R_Actor(nn.Module):
 
         obs_shape = get_shape_from_obs_space(obs_space)
 
-        base = CNNBase if len(obs_shape) == 3 else MLPBase  # MLP
+        base = CNNBase if len(obs_shape) == 3 else A_MLPBase  # MLP
         self.base = base(args, obs_shape)
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            self.rnn = RNNLayer(self.hidden_size, self.hidden_size, self._recurrent_N, self._use_orthogonal)
+            self.rnn = RNNLayer(32, 32, self._recurrent_N, self._use_orthogonal)
 
-        self.act = ACTLayer(action_space, self.hidden_size, self._use_orthogonal, self._gain)
+        self.act = ACTLayer(action_space, 32, self._use_orthogonal, self._gain)
 
         self.to(device)
 
@@ -56,7 +58,7 @@ class R_Actor(nn.Module):
         :return rnn_states: (torch.Tensor) updated RNN hidden states.
         """
         
-        
+        # to tensor
         obs = check(obs).to(**self.tpdv)
         rnn_states = check(rnn_states).to(**self.tpdv)
         masks = check(masks).to(**self.tpdv)
@@ -64,7 +66,7 @@ class R_Actor(nn.Module):
             available_actions = check(available_actions).to(**self.tpdv)
 
         # MLP
-        actor_features = self.base(obs) # 特征向量O 
+        actor_features = self.base(obs) # 特征向量O, 1*32 
         # print("shape of actor_features:{}, rnn_states:{}, masks:{}".format(actor_features.shape, rnn_states.shape,
                                                                         #    masks.shape))
 
@@ -136,19 +138,19 @@ class R_Critic(nn.Module):
         init_method = [nn.init.xavier_uniform_, nn.init.orthogonal_][self._use_orthogonal]
 
         cent_obs_shape = get_shape_from_obs_space(cent_obs_space)
-        base = CNNBase if len(cent_obs_shape) == 3 else MLPBase
+        base = CNNBase if len(cent_obs_shape) == 3 else C_MLPBase
         self.base = base(args, cent_obs_shape)
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            self.rnn = RNNLayer(self.hidden_size, self.hidden_size, self._recurrent_N, self._use_orthogonal)
+            self.rnn = RNNLayer(32, 32, self._recurrent_N, self._use_orthogonal)
 
         def init_(m):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0))
 
         if self._use_popart:
-            self.v_out = init_(PopArt(self.hidden_size, 1, device=device))
+            self.v_out = init_(PopArt(32, 1, device=device))
         else:
-            self.v_out = init_(nn.Linear(self.hidden_size, 1))
+            self.v_out = init_(nn.Linear(32, 1))
 
         self.to(device)
 
