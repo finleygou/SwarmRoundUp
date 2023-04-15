@@ -139,7 +139,8 @@ class MultiAgentEnv(gym.Env):
             info_n.append(info)
         # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
         if all(terminate)==True:
-            print('terminate triggered')
+            pass
+            # print('terminate triggered')
             # done_n = terminate
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum

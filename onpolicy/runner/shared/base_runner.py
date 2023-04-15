@@ -81,11 +81,23 @@ class Runner(object):
                             self.envs.action_space[0],  # [[] [] []]中的一个
                             device = self.device)  # observation_space, action_space都是1*n的list。
 
-        # algorithm
-        self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
-
+        # whether load pre trained model
         if self.model_dir is not None:
-            self.restore()
+            print("use pretrained model")
+            policy_actor_state_dict = torch.load(str(self.model_dir) + '/actor.pt')
+            self.policy.actor.load_state_dict(policy_actor_state_dict)
+            if not self.all_args.use_render:
+                policy_critic_state_dict = torch.load(str(self.model_dir) + '/critic.pt')
+                self.policy.critic.load_state_dict(policy_critic_state_dict)
+                self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
+                if self.trainer._use_valuenorm:
+                    policy_vnorm_state_dict = torch.load(str(self.model_dir) + '/vnorm.pt')
+                    self.trainer.value_normalizer.load_state_dict(policy_vnorm_state_dict)
+            else:
+                # render
+                self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
+        else:
+        # algorithm
             self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
             
         # buffer
@@ -151,7 +163,7 @@ class Runner(object):
             if self.trainer._use_valuenorm:
                 policy_vnorm_state_dict = torch.load(str(self.model_dir) + '/vnorm.pt')
                 self.trainer.value_normalizer.load_state_dict(policy_vnorm_state_dict)
- 
+
     def log_train(self, train_infos, total_num_steps):
         """
         Log training info.

@@ -286,6 +286,7 @@ class Scenario(BaseScenario):
         r_l = 2/(1+np.exp(-k3*d_min))-2
 
         r_step = w1*r_f + w2*r_d + w3*r_l
+        
 
         if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
             return 1 # 5    # terminate reward
@@ -360,7 +361,7 @@ class Scenario(BaseScenario):
         else: 
             agent.done = False
             return False
-
+            
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries):
     set_CL = True

@@ -13,7 +13,7 @@ layer_N=2
 clip_param=0.2
 max_grad_norm=10.0
 gamma=0.985
-hidden_size=128
+hidden_size=32
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
@@ -21,8 +21,8 @@ do
     echo "seed is ${seed}:"
     CUDA_VISIBLE_DEVICES='2,3' python ../train/train_mpe.py --env_name ${env} --algorithm_name ${algo} --experiment_name ${exp} \
     --scenario_name ${scenario} --num_agents ${num_agents} --num_good_agents ${num_good_agents} --num_adversaries ${num_adversaries} --num_landmarks ${num_landmarks} --seed ${seed} \
-    --n_training_threads 4 --n_rollout_threads 32 --num_mini_batch 16 --episode_length 200 --num_env_steps 6000000 \
+    --n_training_threads 4 --n_rollout_threads 32 --num_mini_batch 16 --episode_length 200 --num_env_steps 5120000 \
     --use_Relu ${use_Relu} --layer_N ${layer_N} --clip_param ${clip_param} --max_grad_norm ${max_grad_norm} \
     --gamma ${gamma} --hidden_size ${hidden_size} \
-    --ppo_epoch 10 --gain 0.01 --lr 8e-5 --critic_lr 8e-5 --wandb_name "xxx" --user_name "finleygou"
+    --ppo_epoch 10 --gain 0.01 --lr 2e-4 --critic_lr 2e-4 --wandb_name "xxx" --user_name "finleygou"
 done
