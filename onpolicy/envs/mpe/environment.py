@@ -1,3 +1,4 @@
+import csv
 import gym
 from gym import spaces
 from gym.envs.registration import EnvSpec
@@ -6,6 +7,7 @@ from .multi_discrete import MultiDiscrete
 
 # update bounds to center around agent
 cam_range = 7
+INFO=[]  # render时可视化数据用
 
 # environment for all agents in the multiagent world
 # currently code assumes that no agents will be created/destroyed at runtime!
@@ -139,8 +141,8 @@ class MultiAgentEnv(gym.Env):
             info_n.append(info)
         # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
         if all(terminate)==True:
-            pass
-            # print('terminate triggered')
+            # pass
+            print('terminate triggered')
             # done_n = terminate
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
@@ -304,7 +306,7 @@ class MultiAgentEnv(gym.Env):
 
             self.comm_geoms = []
             for entity in self.world.entities:
-                geom = rendering.make_circle(0.1) # entity.size
+                geom = rendering.make_circle(0.2) # entity.size
                 xform = rendering.Transform()
 
                 entity_comm_geoms = []
@@ -383,7 +385,14 @@ class MultiAgentEnv(gym.Env):
             else:
                 pos = self.agents[i].state.p_pos
             self.viewers[i].set_bounds(
-                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+6, pos[1]+cam_range+6)
+                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+7, pos[1]+cam_range+7)
+            
+            '''
+            #csv
+            INFO.append(i, (self.agents[i].state.p_pos[0], self.agents[i].state.p_pos[1], self.agents[i].state.p_vel, self.agents[i].p_phi))
+            #csv
+            '''
+
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)

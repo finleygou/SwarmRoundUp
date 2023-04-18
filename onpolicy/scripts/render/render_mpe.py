@@ -13,6 +13,7 @@ from onpolicy.config import get_config
 
 from onpolicy.envs.mpe.MPE_env import MPEEnv
 from onpolicy.envs.env_wrappers import SubprocVecEnv, DummyVecEnv
+from onpolicy.envs.mpe.environment import INFO
 
 def make_render_env(all_args):
     def get_env_fn(rank):
@@ -128,6 +129,18 @@ def main(args):
 
     runner = Runner(config)
     runner.render()
+    
+    '''
+    #csv
+    file = open('INFO.csv', 'w', encoding='utf-8', newline="")
+    writer = csv.writer(file)
+    writer.writerow(['time', 'pos_x', 'pos_y', 'vel', 'phi'])
+    for name, qa in INFO:
+        writer.writerow([name, qa[0], qa[1], qa[2], qa[3]])
+        
+    file.close()
+    #
+    '''
     
     # post process
     envs.close()

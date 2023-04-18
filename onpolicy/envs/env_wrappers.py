@@ -290,11 +290,15 @@ class SubprocVecEnv(ShareVecEnv):
         self.closed = True
 
     def render(self, mode="rgb_array"):
-        for remote in self.remotes:
-            remote.send(('render', mode))
+        # for remote in self.remotes:
+        #     remote.send(('render', mode))
+        remote = self.remotes[0]  # 对于第一个进程的env使用render
+        remote.send(('render', mode))
         if mode == "rgb_array":   
-            frame = [remote.recv() for remote in self.remotes]
-            return np.stack(frame) 
+            # frame = [remote.recv() for remote in self.remotes]
+            # return np.stack(frame) 
+            frame = remote.recv()
+            return frame  # np.array
 
 
 def shareworker(remote, parent_remote, env_fn_wrapper):

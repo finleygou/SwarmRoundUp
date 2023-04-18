@@ -13,6 +13,7 @@ class MPERunner(Runner):
     """Runner class to perform training, evaluation. and data collection for the MPEs. See parent class for details."""
     def __init__(self, config):
         super(MPERunner, self).__init__(config)
+        self.use_train_render = False
 
     def run(self):
         self.warmup()   
@@ -24,9 +25,14 @@ class MPERunner(Runner):
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)
 
+            if self.use_train_render == True and episode>episodes/2:
+                image = self.envs.render('rgb_array')[0][0]
+
             glv.set_value('CL_ratio', episode/episodes)  #curriculum learning
             # print('the global value is {}'.format(glv.get_value('CL_ratio')))
             for step in range(self.episode_length):
+                calc_start = time.time()
+
                 # Sample actions
                 values, actions, action_log_probs, rnn_states, rnn_states_critic, actions_env = self.collect(step)
 
@@ -34,6 +40,14 @@ class MPERunner(Runner):
                 obs, rewards, dones, infos = self.envs.step(actions_env)  
 
                 data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states, rnn_states_critic
+
+                # render while training
+                if self.use_train_render == True and step < self.episode_length/4 and episode>episodes/2:
+                    image = self.envs.render('rgb_array')[0][0]
+                    calc_end = time.time()
+                    elapsed = calc_end - calc_start
+                    if elapsed < self.all_args.ifi:
+                        time.sleep(self.all_args.ifi - elapsed)
 
                 # insert data into buffer
                 self.insert(data)
@@ -52,7 +66,7 @@ class MPERunner(Runner):
             # log information （for each thread）
             if episode % self.log_interval == 0:
                 end = time.time()
-                print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
+                print("\n Scenario {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}, CL {}.\n"
                         .format(self.all_args.scenario_name,
                                 self.algorithm_name,
                                 self.experiment_name,
@@ -60,7 +74,8 @@ class MPERunner(Runner):
                                 episodes,
                                 total_num_steps,
                                 self.num_env_steps,
-                                int(total_num_steps / (end - start))))
+                                int(total_num_steps / (end - start)),
+                                glv.get_value('CL_ratio')))
 
                 if self.env_name == "MPE":
                     env_infos = {}

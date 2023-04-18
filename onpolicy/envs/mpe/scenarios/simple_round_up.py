@@ -231,7 +231,7 @@ class Scenario(BaseScenario):
         if all(dones)==True:  
             agent.done = True
             target.done = True
-            return 5
+            return 10
         else:  agent.done = False
         #################################
 
@@ -248,18 +248,17 @@ class Scenario(BaseScenario):
         # print("reward for agent{} is :{:.3f}, left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
         
 
-        if d_i < 0:  # 在围捕半径之内
-            # 不用有几个完成就几个5(5*n)的原因:利于收敛。每个都是10,有封顶,不然会增加reward空间。
-            for i, d in enumerate(d_list):
-                if d < 0 and i != agent.i:
-                    return 10  # r_help
-            return 5  #r_cap
-        else:
-            return r_step  #r_step
+        # if d_i < 0:  # 在围捕半径之内
+        #     # 不用有几个完成就几个5(5*n)的原因:利于收敛。每个都是10,有封顶,不然会增加reward空间。
+        #     for i, d in enumerate(d_list):
+        #         if d < 0 and i != agent.i:
+        #             return 10  # r_help
+        #     return 5  #r_cap
+        # else:
+        #     return r_step  #r_step
         '''
         
-
-        '''
+        
         k1, k2 = 0.2, 0.1
         w1, w2 = 0.4, 0.6
         # formaion reward r_f
@@ -271,8 +270,9 @@ class Scenario(BaseScenario):
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1
         
         r_step = w1*r_f + w2*r_d
-        '''
+        
 
+        '''
         k1, k2, k3 = 0.2, 0.1, 2.0
         w1, w2, w3 = 0.4, 0.45, 0.15
         # formaion reward r_f
@@ -286,10 +286,10 @@ class Scenario(BaseScenario):
         r_l = 2/(1+np.exp(-k3*d_min))-2
 
         r_step = w1*r_f + w2*r_d + w3*r_l
-        
+        '''
 
-        if abs(di_adv)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
-            return 1 # 5    # terminate reward
+        if abs(d_i)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
+            return 5 # 5    # terminate reward
         else:
             return r_step
 
@@ -372,7 +372,7 @@ def escape_policy(agent, adversaries):
         escape_v = np.array([0.0, 0.0])
     else:
         if set_CL:
-            max_v = 1.0
+            max_v = agent.max_speed
             CL_ratio = glv.get_value('CL_ratio')
             if CL_ratio < Cp:  # Cp
                 max_speed = max_v*(Cv + (1-Cv)*CL_ratio/Cp)  # Cv = 0.2

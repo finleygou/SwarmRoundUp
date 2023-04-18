@@ -24,5 +24,5 @@ do
     --n_training_threads 4 --n_rollout_threads 32 --num_mini_batch 16 --episode_length 200 --num_env_steps 5120000 \
     --use_Relu ${use_Relu} --layer_N ${layer_N} --clip_param ${clip_param} --max_grad_norm ${max_grad_norm} \
     --gamma ${gamma} --hidden_size ${hidden_size} \
-    --ppo_epoch 10 --gain 0.01 --lr 2e-4 --critic_lr 2e-4 --wandb_name "xxx" --user_name "finleygou"
+    --ppo_epoch 10 --gain 0.01 --lr 8e-5 --critic_lr 8e-5 --wandb_name "xxx" --user_name "finleygou"
 done
