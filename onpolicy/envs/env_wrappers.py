@@ -161,6 +161,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 remote.send(fr)
             elif data == "human":
                 env.render(mode=data)
+        elif cmd == 'set_cl':
+            env._set_CL(data)
         elif cmd == 'reset_task':
             ob = env.reset_task()
             remote.send(ob)
@@ -173,7 +175,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
         else:
             raise NotImplementedError
 
-
+'''
 class GuardSubprocVecEnv(ShareVecEnv):
     def __init__(self, env_fns, spaces=None):
         """
@@ -230,7 +232,7 @@ class GuardSubprocVecEnv(ShareVecEnv):
         for p in self.ps:
             p.join()
         self.closed = True
-
+'''
 
 class SubprocVecEnv(ShareVecEnv):
     def __init__(self, env_fns, spaces=None):
@@ -293,14 +295,18 @@ class SubprocVecEnv(ShareVecEnv):
         # for remote in self.remotes:
         #     remote.send(('render', mode))
         remote = self.remotes[0]  # 对于第一个进程的env使用render
-        remote.send(('render', mode))
+        remote.send(('render', mode))  # 进程通信，下发render指令
         if mode == "rgb_array":   
             # frame = [remote.recv() for remote in self.remotes]
             # return np.stack(frame) 
             frame = remote.recv()
-            return frame  # np.array
+            return frame  # np.array 图像格式
 
+    def set_CL(self, CL_ratio):
+        for remote in self.remotes:
+            remote.send(('set_cl', CL_ratio))
 
+'''
 def shareworker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
     env = env_fn_wrapper.x()
@@ -659,7 +665,7 @@ class ChooseGuardSubprocVecEnv(ShareVecEnv):
         for p in self.ps:
             p.join()
         self.closed = True
-
+'''
 
 # single env
 class DummyVecEnv(ShareVecEnv):
@@ -705,7 +711,7 @@ class DummyVecEnv(ShareVecEnv):
         else:
             raise NotImplementedError
 
-
+'''
 class ShareDummyVecEnv(ShareVecEnv):
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
@@ -824,3 +830,4 @@ class ChooseSimpleDummyVecEnv(ShareVecEnv):
                 env.render(mode=mode)
         else:
             raise NotImplementedError
+'''

@@ -4,6 +4,7 @@ from gym import spaces
 from gym.envs.registration import EnvSpec
 import numpy as np
 from .multi_discrete import MultiDiscrete
+from onpolicy import global_var as glv
 
 # update bounds to center around agent
 cam_range = 7
@@ -103,6 +104,9 @@ class MultiAgentEnv(gym.Env):
             self.viewers = [None] * self.n
         self._reset_render()
 
+        # set CL
+        self.CL_ratio = 0
+
     def seed(self, seed=None):
         if seed is None:
             np.random.seed(1)
@@ -141,9 +145,12 @@ class MultiAgentEnv(gym.Env):
             info_n.append(info)
         # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
         if all(terminate)==True:
-            # pass
-            print('terminate triggered')
+            pass
+            # print('terminate triggered')
             # done_n = terminate
+
+        # self._set_CL(0.3)
+        # print('env, CL is {}'.format(self.CL_ratio))
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
         reward = np.sum(reward_n)
@@ -256,6 +263,10 @@ class MultiAgentEnv(gym.Env):
 
         # make sure we used all elements of action
         assert len(action) == 0, 'some action not used'
+
+    def _set_CL(self, CL_ratio):
+        glv.set_value('CL_ratio', CL_ratio)
+        self.CL_ratio = glv.get_value('CL_ratio')
 
     # reset rendering assets
     def _reset_render(self):

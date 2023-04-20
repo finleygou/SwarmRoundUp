@@ -248,14 +248,14 @@ class Scenario(BaseScenario):
         # print("reward for agent{} is :{:.3f}, left{:.3f}, right{:.3f}, exp{:.3f}".format(agent.i, r3, left_nb_angle, right_nb_angle, exp_alpha))
         
 
-        # if d_i < 0:  # 在围捕半径之内
-        #     # 不用有几个完成就几个5(5*n)的原因:利于收敛。每个都是10,有封顶,不然会增加reward空间。
-        #     for i, d in enumerate(d_list):
-        #         if d < 0 and i != agent.i:
-        #             return 10  # r_help
-        #     return 5  #r_cap
-        # else:
-        #     return r_step  #r_step
+        if abs(d_i)<0.2:
+            # 不用有几个完成就几个5(5*n)的原因:利于收敛。每个都是10,有封顶,不然会增加reward空间。
+            for i, d in enumerate(d_list):
+                if abs(d) < 0.2 and i != agent.i:
+                    return 10  # r_help
+            return 5  #r_cap
+        else:
+            return r_step  #r_step
         '''
         
         
@@ -381,6 +381,7 @@ def escape_policy(agent, adversaries):
                 max_speed = max_v
         else:
             max_speed = agent.max_speed
+        # print("simple, CL is {}, maxV is {}".format(CL_ratio, max_speed))
         escape_v = np.array([0, 0])
         for adv in adversaries:
             d_vec_ij = agent.state.p_pos - adv.state.p_pos
