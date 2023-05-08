@@ -7,11 +7,11 @@ class Scenario(BaseScenario):
     
     def __init__(self) -> None:
         super().__init__()
-        self.cd = 1.5
-        self.cp = 0.5
-        self.cr = 1.0
+        self.cd = 1.0  # 取消Cd
+        self.cp = 0.4
+        self.cr = 1.0  # 取消Cr
         self.d_cap = 1.5 # 期望围捕半径,动态变化,在set_CL里面
-        self.init_target_pos = 5.0
+        self.init_target_pos = 4.5
         self.use_CL = True  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
@@ -32,8 +32,8 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             # agent.accel = 3.0 if agent.adversary else 3.0  # max acc 一阶模型不用设置这个
-            agent.max_speed = 2.0 if agent.adversary else 1.0
-            agent.max_angular = 2.0 if agent.adversary else 0.2 # 改成3过但是发散
+            agent.max_speed = 2.0 if agent.adversary else 1.25
+            agent.max_angular = 2.0 if agent.adversary else 2.0 
 
         # make initial conditions
         self.reset_world(world)
@@ -66,13 +66,13 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = rand_pos[0], np.pi*2*rand_pos[1]  # 半径为1，角度360，随机采样。圆域。
+                r_, theta_ = 0.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
                 if self.use_CL:
                     init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
                 else:
                     init_dist = self.init_target_pos
-                # agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])  # (0,5)为圆心
-                agent.state.p_pos = np.array([0.0, init_dist+(r_-0.5)*2])
+                agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])  # (0,5)为圆心
+                # agent.state.p_pos = np.array([0.0, init_dist+(r_-0.5)*2])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy
                 agent.done = False
@@ -258,35 +258,50 @@ class Scenario(BaseScenario):
             return r_step  #r_step
         '''
         
-        
-        k1, k2 = 0.2, 0.1
-        w1, w2 = 0.4, 0.6
-        # formaion reward r_f
-        form_vec = np.array([0.0, 0.0])
-        for adv in adversaries:
-            form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
-        r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
-        # distance coordination reward r_d
-        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1
-        
-        r_step = w1*r_f + w2*r_d
-        
+        if self.use_CL == True:
+            # Cp之前不考虑避障，Cp之后考虑避障
+            if glv.get_value('CL_ratio') < self.cp:
+                k1, k2 = 0.2, 0.1
+                w1, w2 = 0.4, 0.6
+                # formaion reward r_f
+                form_vec = np.array([0.0, 0.0])
+                for adv in adversaries:
+                    form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
+                r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+                # distance coordination reward r_d
+                r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1
+                
+                r_step = w1*r_f + w2*r_d
+            else:
+                k1, k2, k3 = 0.2, 0.1, 2.0
+                w1, w2, w3 = 0.35, 0.4, 0.25
+                # formaion reward r_f
+                form_vec = np.array([0.0, 0.0])
+                for adv in adversaries:
+                    form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
+                r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+                # distance coordination reward r_d
+                r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
+                # neighbor coordination reward r_l
+                r_l = 2/(1+np.exp(-k3*d_min))-2
 
-        '''
-        k1, k2, k3 = 0.2, 0.1, 2.0
-        w1, w2, w3 = 0.4, 0.45, 0.15
-        # formaion reward r_f
-        form_vec = np.array([0.0, 0.0])
-        for adv in adversaries:
-            form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
-        r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
-        # distance coordination reward r_d
-        r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
-        # neighbor coordination reward r_l
-        r_l = 2/(1+np.exp(-k3*d_min))-2
+                r_step = w1*r_f + w2*r_d + w3*r_l
+        else:
+            # render，考虑避障
+            k1, k2, k3 = 0.2, 0.1, 2.0
+            w1, w2, w3 = 0.35, 0.4, 0.25
+            # formaion reward r_f
+            form_vec = np.array([0.0, 0.0])
+            for adv in adversaries:
+                form_vec = form_vec + (adv.state.p_pos - target.state.p_pos)
+            r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
+            # distance coordination reward r_d
+            r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
+            # neighbor coordination reward r_l
+            r_l = 2/(1+np.exp(-k3*d_min))-2
 
-        r_step = w1*r_f + w2*r_d + w3*r_l
-        '''
+            r_step = w1*r_f + w2*r_d + w3*r_l
+            
 
         if abs(d_i)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
             return 5 # 5    # terminate reward
@@ -331,7 +346,7 @@ class Scenario(BaseScenario):
             alpha_ij = self.GetAcuteAngle(dist_vec, dist_j_vec)
             o_ij = np.concatenate([o_ij]+[np.array([d_ij, Q_ij, Q_ji, delta_d_ij, alpha_ij])])
         
-        assert len(o_ij) == 20, ('o_ij length not right')
+        # assert len(o_ij) == 20, ('o_ij length not right')
         # 只取邻居的特征
         # print(o_ij)
         # if len(o_ij) == 10:
@@ -365,8 +380,8 @@ class Scenario(BaseScenario):
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries):
     set_CL = True
-    Cp = 0.5
-    Cv = 0.2
+    Cp = 0.4
+    Cv = 0.4
     action = agent.action
     if agent.done==True:  # terminate
         escape_v = np.array([0.0, 0.0])
@@ -382,6 +397,9 @@ def escape_policy(agent, adversaries):
         else:
             max_speed = agent.max_speed
         # print("simple, CL is {}, maxV is {}".format(CL_ratio, max_speed))
+        
+        '''
+        # potential based
         escape_v = np.array([0, 0])
         for adv in adversaries:
             d_vec_ij = agent.state.p_pos - adv.state.p_pos
@@ -393,7 +411,44 @@ def escape_policy(agent, adversaries):
         # 超过最大速度,归一化
         if np.linalg.norm(escape_v) > max_speed:
             escape_v = escape_v/np.linalg.norm(escape_v) * max_speed
-    
+        '''
+
+        escape_v = np.array([0, 0])
+        for adv in adversaries:
+            d_vec_ij = agent.state.p_pos - adv.state.p_pos
+            d_vec_ij = d_vec_ij / np.square(np.linalg.norm(d_vec_ij))
+            escape_v = escape_v+d_vec_ij
+        
+        # 计算此刻与上一时刻速度方向
+        v_vector = escape_v/np.linalg.norm(escape_v)  # 此刻期望速度方向
+        last_v_norm = np.linalg.norm(agent.state.p_vel)
+        if last_v_norm > 0:
+            last_v_vec = agent.state.p_vel/last_v_norm  # 上一速度方向
+        else:
+            last_v_vec = np.array([0.0, 1.0]) # 初始速度方向
+        
+        # 新旧方向夹角delta_theta(-pi ~ pi)
+        rho = np.arcsin(np.cross(last_v_vec, v_vector))
+        cos_ = np.dot(last_v_vec, v_vector)
+        if 1.0 < cos_: 
+            cos_ = 1.0
+            rho = 0
+        elif cos_ < -1.0: 
+            cos_ = -1.0
+        delta_theta = np.arccos(cos_)
+        if rho < 0:
+            delta_theta =  np.pi*2 - delta_theta
+        if delta_theta > np.pi: delta_theta = delta_theta - np.pi*2
+
+        # constrain
+        max_theta = 0.1*agent.max_angular  # self.dt
+        if abs(delta_theta) > max_theta:
+            max_theta = max_theta if delta_theta > 0 else -max_theta
+            # rotate
+            v_vector = np.array([last_v_vec[0] * np.cos(max_theta) - last_v_vec[1] * np.sin(max_theta),
+                                last_v_vec[0] * np.sin(max_theta) + last_v_vec[1] * np.cos(max_theta)])
+
+        escape_v = max_speed * v_vector
+
     action.u = escape_v  # 1*2
     return action
-# new branch test

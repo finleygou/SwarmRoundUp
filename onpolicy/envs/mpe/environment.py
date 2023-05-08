@@ -7,7 +7,7 @@ from .multi_discrete import MultiDiscrete
 from onpolicy import global_var as glv
 
 # update bounds to center around agent
-cam_range = 7
+cam_range = 8
 INFO=[]  # render时可视化数据用
 
 # environment for all agents in the multiagent world
@@ -396,7 +396,7 @@ class MultiAgentEnv(gym.Env):
             else:
                 pos = self.agents[i].state.p_pos
             self.viewers[i].set_bounds(
-                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+7, pos[1]+cam_range+7)
+                pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+6.5, pos[1]+cam_range+6.5)
             
             '''
             #csv

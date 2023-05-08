@@ -5,10 +5,12 @@ from onpolicy.algorithms.utils.cnn import CNNBase
 # from onpolicy.algorithms.utils.mlp import MLPBase
 from onpolicy.algorithms.utils.roundup_actor_mlp import A_MLPBase
 from onpolicy.algorithms.utils.roundup_critic_mlp import C_MLPBase
+from onpolicy.algorithms.utils.phi import PhiNetBase
 from onpolicy.algorithms.utils.rnn import RNNLayer
 from onpolicy.algorithms.utils.act import ACTLayer
 from onpolicy.algorithms.utils.popart import PopArt
 from onpolicy.utils.util import get_shape_from_obs_space
+import numpy as np
 
 
 class R_Actor(nn.Module):
@@ -31,10 +33,12 @@ class R_Actor(nn.Module):
         self._recurrent_N = args.recurrent_N
         self.tpdv = dict(dtype=torch.float32, device=device)
 
-        obs_shape = get_shape_from_obs_space(obs_space)
+        obs_shape = get_shape_from_obs_space(obs_space)  
+
+        self.phi = PhiNetBase(args, 5)  # 5 is length of O_ij
 
         base = CNNBase if len(obs_shape) == 3 else A_MLPBase  # MLP
-        self.base = base(args, obs_shape)
+        self.base = base(args, 72)  # 72 is obs_feature
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             self.rnn = RNNLayer(32, 32, self._recurrent_N, self._use_orthogonal)
@@ -59,16 +63,29 @@ class R_Actor(nn.Module):
         """
         
         # to tensor
-        obs = check(obs).to(**self.tpdv)
+        obs = check(obs).to(**self.tpdv)  # 1*28
         rnn_states = check(rnn_states).to(**self.tpdv)
         masks = check(masks).to(**self.tpdv)
         if available_actions is not None:
             available_actions = check(available_actions).to(**self.tpdv)
 
+        x0 = obs[:,0:8]  # o_loc+o_ext
+        x1 = obs[:,8:]  # o_ij
+        len_x1 = x1.size(1)
+        # print(len_x1)  # 20
+        assert np.mod(len_x1, 5) == 0, "wrong length in Actor Network"
+        N = int(len_x1/5)  # num of alliances
+        phi_stacker = torch.zeros(64).cuda()  # 1*64, you cannot say torch.zeros(1, 64)
+        for i in range(N):
+            x_ = x1[:, 5*i: 5*i+5]
+            # print(self.phi(x_).shape)
+            phi_stacker = phi_stacker + self.phi(x_).cuda()
+        phi_stacker = phi_stacker/N
+        obs_features = torch.cat((x0, phi_stacker), dim=1)  # 8+64=72 dim
+
         # MLP
-        actor_features = self.base(obs) # 特征向量O, 1*32 
-        # print("shape of actor_features:{}, rnn_states:{}, masks:{}".format(actor_features.shape, rnn_states.shape,
-                                                                        #    masks.shape))
+        actor_features = self.base(obs_features) # input: 1*72, output: 1*32, before rnn.
+        # print("shape of actor_features:{}, rnn_states:{}, masks:{}".format(actor_features.shape, rnn_states.shape, masks.shape))
 
         # RNN
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
@@ -104,7 +121,21 @@ class R_Actor(nn.Module):
         if active_masks is not None:
             active_masks = check(active_masks).to(**self.tpdv)
 
-        actor_features = self.base(obs)
+        x0 = obs[:,0:8]  # o_loc+o_ext
+        x1 = obs[:,8:]  # o_ij
+        len_x1 = x1.size(1)
+        # print(len_x1)  # 20
+        assert np.mod(len_x1, 5) == 0, "wrong length in Actor Network"
+        N = int(len_x1/5)
+        phi_stacker = torch.zeros(64).cuda()  # 1*64, you cannot say torch.zeros(1, 64)
+        for i in range(N):
+            x_ = x1[:, 5*i: 5*i+5]
+            # print(self.phi(x_).shape)
+            phi_stacker = phi_stacker + self.phi(x_).cuda()
+        phi_stacker = phi_stacker/N
+        obs_features = torch.cat((x0, phi_stacker), dim=1)  # 8+64=72 dim
+
+        actor_features = self.base(obs_features)
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
