@@ -66,7 +66,7 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 0.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
+                r_, theta_ = 1.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
                 if self.use_CL:
                     init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
                 else:

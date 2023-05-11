@@ -398,11 +398,14 @@ class MultiAgentEnv(gym.Env):
             self.viewers[i].set_bounds(
                 pos[0]-cam_range, pos[0]+cam_range, pos[1]-cam_range+6.5, pos[1]+cam_range+6.5)
             
-            '''
+            
             #csv
-            INFO.append(i, (self.agents[i].state.p_pos[0], self.agents[i].state.p_pos[1], self.agents[i].state.p_vel, self.agents[i].p_phi))
+            data_ = ()
+            for j in range(len(self.agents)):
+                data_ = data_ + (j, self.agents[j].state.p_pos[0], self.agents[j].state.p_pos[1], self.agents[j].state.p_vel[0], self.agents[j].state.p_vel[1], self.agents[j].state.phi)
+            INFO.append(data_)
             #csv
-            '''
+            
 
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
