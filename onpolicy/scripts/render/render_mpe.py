@@ -6,6 +6,7 @@ import socket
 import setproctitle
 import numpy as np
 from pathlib import Path
+sys.path.insert(0,"/home/sdc/goufandi_space/Projects/SwarmRoundUp_V2")
 
 import torch
 
@@ -15,7 +16,6 @@ from onpolicy.envs.mpe.MPE_env import MPEEnv
 from onpolicy.envs.env_wrappers import SubprocVecEnv, DummyVecEnv
 
 import csv
-from onpolicy.envs.mpe.environment import INFO
 
 def make_render_env(all_args):
     def get_env_fn(rank):
@@ -133,6 +133,7 @@ def main(args):
     runner.render()
     
     if all_args.save_data==True:
+        from onpolicy.envs.mpe.environment import INFO
         #csv
         file = open('INFO.csv', 'w', encoding='utf-8', newline="")
         writer = csv.writer(file)

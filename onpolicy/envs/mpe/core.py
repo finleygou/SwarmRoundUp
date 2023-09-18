@@ -51,6 +51,7 @@ class Entity(object):
         # max speed and accel
         self.max_speed = None
         self.max_angular = None
+        self.max_accel = None
         self.accel = None
         # state: including internal/mental state p_pos, p_vel
         self.state = EntityState()
@@ -93,6 +94,7 @@ class Agent(Entity):
         self.goal = None
         # finley
         self.done = False
+        self.target_point = None
 
 # multi-agent world
 class World(object):
@@ -215,14 +217,52 @@ class World(object):
     def apply_action_force(self, u):
         # set applied forces
         '''
-        for adversary agents, u = [ar, at]; 
+        for adversary agents, u = [ax, ay]; 
         for escaping agents, u = [Vx, Vy];
         '''
         for i, agent in enumerate(self.agents):
             u[i] = agent.action.u
         return u
 
-    def Get_antiClockAngle(self, v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
+
+    def integrate_state(self, u):  # u:[[1*2]...] 1*2n
+        target_agent = self.scripted_agents[0]
+        for i, agent in enumerate(self.agents):            
+            if agent.adversary == True:  # u = [vx, vy], -1~1
+                # e_r = (target_agent.state.p_pos - agent.state.p_pos)/np.linalg.norm(target_agent.state.p_pos - agent.state.p_pos)
+                # e_t = np.array([e_r[0]*np.cos(np.pi/2)-e_r[1]*np.sin(np.pi/2), e_r[0]*np.sin(np.pi/2)+e_r[1]*np.cos(np.pi/2)])  # 逆时针旋转90
+                # a_r, a_t= e_r*u[i][0]*agent.max_accel, e_t*u[i][1]*agent.max_accel
+                # a = a_r + a_t
+                # a_x = a[0]
+                # a_y = a[1]
+                a_x = u[i][0]*agent.max_accel
+                a_y = u[i][1]*agent.max_accel
+                v_x = agent.state.p_vel[0] + a_x*self.dt
+                v_y = agent.state.p_vel[1] + a_y*self.dt
+                # 检查速度是否超过上限
+                if abs(v_x) > agent.max_speed:
+                    v_x = agent.max_speed if agent.state.p_vel[0]>0 else -agent.max_speed
+                if abs(v_y) > agent.max_speed:
+                    v_y = agent.max_speed if agent.state.p_vel[1]>0 else -agent.max_speed
+                v_next = np.array([v_x, v_y])
+                theta = np.arctan2(v_y, v_x)
+                if theta < 0:
+                    theta += np.pi*2 
+                # update phi
+                agent.state.phi = theta
+                # update p_pos
+                agent.state.p_pos += agent.state.p_vel * self.dt  # 上一时刻的v
+                # update acc
+                agent.state.last_a = np.linalg.norm(v_next) - np.linalg.norm(agent.state.p_vel)
+                # update p_vel
+                agent.state.p_vel = v_next
+            else:  # u = [Vx, Vy]
+                agent.state.p_vel = np.array([u[i][0], u[i][1]])
+                agent.state.p_pos += agent.state.p_vel * self.dt
+            # print("agent {} speed is {}".format(agent.i, np.linalg.norm(agent.state.p_vel)))
+
+# other functions
+def Get_antiClockAngle(v1, v2):  # v1逆时针转到v2所需角度。范围：0-2pi
         # 2个向量模的乘积
         TheNorm = np.linalg.norm(v1)*np.linalg.norm(v2)
         # 叉乘
@@ -239,42 +279,3 @@ class World(object):
             return np.pi*2 - theta
         else:
             return theta
-
-    def integrate_state(self, u):  # u:[[1*2]...] 1*2n
-        target_agent = self.scripted_agents[0]
-        for i, agent in enumerate(self.agents):            
-            if agent.adversary == True:  # u = [ar, at]
-                # [at, ar]转为[v,w]
-                e_r = (target_agent.state.p_pos - agent.state.p_pos)/np.linalg.norm(target_agent.state.p_pos - agent.state.p_pos)
-                e_t = np.array([e_r[0]*np.cos(np.pi/2)-e_r[1]*np.sin(np.pi/2), e_r[0]*np.sin(np.pi/2)+e_r[1]*np.cos(np.pi/2)])  # 逆时针旋转90
-                a_r, a_t= e_r*u[i][0], e_t*u[i][1]
-                a_ = a_r + a_t
-                a_norm = np.linalg.norm(a_)
-                pos_vec = np.array([np.cos(agent.state.phi), np.sin(agent.state.phi)])
-                if a_norm < 1e-4:
-                    delta_theta = 0.0
-                else:
-                    delta_theta = self.Get_antiClockAngle(pos_vec, a_)
-                if 0<delta_theta<=np.pi:
-                    pass
-                else:
-                    delta_theta -= np.pi*2 
-                v_ = agent.max_speed * a_norm  # 正
-                w_ = agent.max_angular * delta_theta/(np.pi)  # 可正可负
-                # update phi
-                agent.state.p_omg = w_
-                agent.state.phi += agent.state.p_omg*self.dt
-                if agent.state.phi>2*np.pi:
-                    agent.state.phi -= 2*np.pi
-                phi_ = agent.state.phi
-                # update acc
-                new_v = np.array([v_*np.cos(phi_), v_*np.sin(phi_)])
-                agent.state.last_a = v_ - np.linalg.norm(agent.state.p_vel)
-                # update p_vel
-                agent.state.p_vel = new_v
-                # update p_pos
-                agent.state.p_pos += agent.state.p_vel * self.dt
-            else:  # u = [Vx, Vy]
-                agent.state.p_vel = np.array([u[i][0], u[i][1]])
-                agent.state.p_pos += agent.state.p_vel * self.dt
-            # print("agent {} speed is {}".format(agent.i, np.linalg.norm(agent.state.p_vel)))

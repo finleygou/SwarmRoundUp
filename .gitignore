@@ -17,3 +17,4 @@ logs
 .idea/vcs.xml
 *.log
 onpolicy/scripts/train_mpe_scripts/nohup.out
+*.txt

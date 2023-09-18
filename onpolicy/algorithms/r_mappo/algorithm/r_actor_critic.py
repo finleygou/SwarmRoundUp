@@ -33,7 +33,7 @@ class R_Actor(nn.Module):
         self._recurrent_N = args.recurrent_N
         self.tpdv = dict(dtype=torch.float32, device=device)
 
-        obs_shape = get_shape_from_obs_space(obs_space)  
+        obs_shape = get_shape_from_obs_space(obs_space)  # Box, same as obs in simple_scenario
 
         self.phi = PhiNetBase(args, 5)  # 5 is length of O_ij
 

@@ -105,7 +105,9 @@ class MultiAgentEnv(gym.Env):
         self._reset_render()
 
         # set CL
+        self.use_CL = True
         self.CL_ratio = 0
+        self.Cp= 0.2
 
     def seed(self, seed=None):
         if seed is None:
@@ -148,9 +150,6 @@ class MultiAgentEnv(gym.Env):
             pass
             # print('terminate triggered')
             # done_n = terminate
-
-        # self._set_CL(0.3)
-        # print('env, CL is {}'.format(self.CL_ratio))
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
         reward = np.sum(reward_n)
@@ -246,10 +245,16 @@ class MultiAgentEnv(gym.Env):
                         p = np.argmax(action[0][0:self.world.dim_p])
                         action[0][:] = 0.0
                         action[0][p] = 1.0
-                    # if done: # 不能给输出值置零，否则会影响actor网络参数
-                    #     agent.action.u = np.array([0.0, 0.0])
-                    # else:
-                    agent.action.u = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    # 这里是给agent设置动作，与小车端的物理接口是一样的。
+                    network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    relative_pos_vec = agent.target_point - agent.state.p_pos
+                    policy_output = (relative_pos_vec)*0.4 - agent.state.p_vel
+                    if self.use_CL == True:
+                        if self.CL_ratio < self.Cp:
+                            agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
+                        else:
+                            agent.action.u = network_output
+                    else: agent.action.u = network_output
                     d = self.world.dim_p
                     # print("action in env is {}".format(action))
             # print("1 action in env is {}".format(action))
@@ -265,6 +270,8 @@ class MultiAgentEnv(gym.Env):
         assert len(action) == 0, 'some action not used'
 
     def _set_CL(self, CL_ratio):
+        # 通过多进程set value，与env_wraapper直接关联，不能改。
+        # 此处glv是这个进程中的！与mperunner中的并不共用。
         glv.set_value('CL_ratio', CL_ratio)
         self.CL_ratio = glv.get_value('CL_ratio')
 
@@ -401,8 +408,10 @@ class MultiAgentEnv(gym.Env):
             
             #csv
             data_ = ()
-            for j in range(len(self.agents)):
-                data_ = data_ + (j, self.agents[j].state.p_pos[0], self.agents[j].state.p_pos[1], self.agents[j].state.p_vel[0], self.agents[j].state.p_vel[1], self.agents[j].state.phi)
+            for j in range(len(self.world.agents)):
+                data_ = data_ + (j, self.world.agents[j].state.p_pos[0], self.world.agents[j].state.p_pos[1], \
+                                 self.world.agents[j].state.p_vel[0], self.world.agents[j].state.p_vel[1], \
+                                    self.world.agents[j].state.phi)
             INFO.append(data_)
             #csv
             

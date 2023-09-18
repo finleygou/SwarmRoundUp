@@ -6,6 +6,7 @@ import socket
 import setproctitle
 import numpy as np
 from pathlib import Path
+sys.path.insert(0,"/home/sdc/goufandi_space/Projects/SwarmRoundUp_V2")
 import torch
 from onpolicy.config import get_config
 from onpolicy.envs.mpe.MPE_env import MPEEnv

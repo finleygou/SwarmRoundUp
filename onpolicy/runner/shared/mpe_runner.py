@@ -29,7 +29,7 @@ class MPERunner(Runner):
                 image = self.envs.render('rgb_array')[0][0]
 
             glv.set_value('CL_ratio', episode/episodes)  #curriculum learning
-            self.envs.set_CL(glv.get_value('CL_ratio'))
+            self.envs.set_CL(glv.get_value('CL_ratio'))  # env_wrapper
             # print('the global value is {}'.format(glv.get_value('CL_ratio')))
             for step in range(self.episode_length):
                 calc_start = time.time()
