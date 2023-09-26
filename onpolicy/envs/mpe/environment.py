@@ -105,7 +105,7 @@ class MultiAgentEnv(gym.Env):
         self._reset_render()
 
         # set CL
-        self.use_CL = True
+        self.use_CL = False
         self.CL_ratio = 0
         self.Cp= 0.2
 
@@ -245,16 +245,18 @@ class MultiAgentEnv(gym.Env):
                         p = np.argmax(action[0][0:self.world.dim_p])
                         action[0][:] = 0.0
                         action[0][p] = 1.0
-                    # 这里是给agent设置动作，与小车端的物理接口是一样的。
-                    network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
-                    relative_pos_vec = agent.target_point - agent.state.p_pos
-                    policy_output = (relative_pos_vec)*0.4 - agent.state.p_vel
-                    if self.use_CL == True:
-                        if self.CL_ratio < self.Cp:
-                            agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
-                        else:
-                            agent.action.u = network_output
-                    else: agent.action.u = network_output
+                    # # 以下是给agent设置动作，与小车端的物理接口是一样的。
+                    # network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    # relative_pos_vec = agent.target_point - agent.state.p_pos
+                    # policy_output = (relative_pos_vec)*0.4 - agent.state.p_vel
+                    # if self.use_CL == True:
+                    #     if self.CL_ratio < self.Cp:
+                    #         agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
+                    #     else:
+                    #         agent.action.u = network_output
+                    # else: agent.action.u = network_output
+                    network_output = action[0][0:self.world.dim_p]
+                    agent.action.u = network_output
                     d = self.world.dim_p
                     # print("action in env is {}".format(action))
             # print("1 action in env is {}".format(action))

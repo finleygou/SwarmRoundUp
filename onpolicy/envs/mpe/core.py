@@ -19,7 +19,7 @@ class AgentState(EntityState):
         self.phi = None  # 0-2pi
         # physical angular velocity
         self.p_omg = None 
-        self.last_a = 0
+        self.last_a = np.array([0, 0])
 
 # action of the agent
 class Action(object):
@@ -253,11 +253,21 @@ class World(object):
                 # update p_pos
                 agent.state.p_pos += agent.state.p_vel * self.dt  # 上一时刻的v
                 # update acc
-                agent.state.last_a = np.linalg.norm(v_next) - np.linalg.norm(agent.state.p_vel)
+                agent.state.last_a = np.array([a_x, a_y])
                 # update p_vel
                 agent.state.p_vel = v_next
             else:  # u = [Vx, Vy]
-                agent.state.p_vel = np.array([u[i][0], u[i][1]])
+                # target 的运动学在simple_roundup里面实现
+                if agent.done == True:
+                    agent.state.p_vel = np.array([0, 0])
+                else:
+                    v_x, v_y = u[i][0], u[i][1]
+                    theta = np.arctan2(v_y, v_x)
+                    if theta < 0:
+                        theta += np.pi*2 
+                    # update phi
+                    agent.state.phi = theta
+                    agent.state.p_vel = np.array([u[i][0], u[i][1]])
                 agent.state.p_pos += agent.state.p_vel * self.dt
             # print("agent {} speed is {}".format(agent.i, np.linalg.norm(agent.state.p_vel)))
 

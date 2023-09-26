@@ -710,6 +710,10 @@ class DummyVecEnv(ShareVecEnv):
                 env.render(mode=mode)
         else:
             raise NotImplementedError
+    
+    def set_CL(self, CL_ratio):
+        for env in self.envs:
+            env._set_CL(CL_ratio)
 
 '''
 class ShareDummyVecEnv(ShareVecEnv):

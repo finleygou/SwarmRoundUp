@@ -4,7 +4,7 @@ import numpy as np
 from .util import init, get_clones
 
 """MLP modules.
-   input: (6+2+5*(N-1)) * N   output: V(s)
+   input: 16*N   output: V(s)
 """
 
 class C_MLPLayer(nn.Module):
@@ -19,42 +19,25 @@ class C_MLPLayer(nn.Module):
         def init_(m):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain=gain)
 
-        self.phi_loc = nn.Sequential(
-            init_(nn.Linear(6, 64)), active_func, nn.LayerNorm(64))  # 输入6， 输出64
+        # self.phi_loc = nn.Sequential(
+        #     init_(nn.Linear(6, 64)), active_func, nn.LayerNorm(64))  # 输入6， 输出64
         
-        self.phi_oij = nn.Sequential(
-            init_(nn.Linear(5, 64)), active_func, nn.LayerNorm(64))  # 输入5， 输出64
+        # self.phi_oij = nn.Sequential(
+        #     init_(nn.Linear(5, 64)), active_func, nn.LayerNorm(64))  # 输入5， 输出64
         
         self.fc1 = nn.Sequential(
-            init_(nn.Linear(128, 64)), active_func, nn.LayerNorm(64))
+            init_(nn.Linear(80, 256)), active_func, nn.LayerNorm(256))
         
         self.fc2 = nn.Sequential(
-            init_(nn.Linear(64, 32)), active_func, nn.LayerNorm(32))
+            init_(nn.Linear(256, 128)), active_func, nn.LayerNorm(128))
+        
+        self.fc3 = nn.Sequential(
+            init_(nn.Linear(128, 32)), active_func, nn.LayerNorm(32))        
 
     def forward(self, x):
-        len_x = x.size(1)  # col. the dim of x 
-        N = (np.sqrt(9+20*len_x)-3)/10  # num of agents
-        assert np.mod(N, 1.0) == 0.0, "wrong length in Critic Network"
-        N = int(N)
-        dim_obs = int(len_x/N)  # dim of x for each agent
-        o_loc_stacker = torch.zeros(64).cuda()  # divide N
-        # o_ext_stacker = torch.zeros(2).cuda()  # divide N
-        o_ij_stacker = torch.zeros(64).cuda() # divide N*(N-1)
-        for i in range(N):
-            xi = x[:, dim_obs*i: dim_obs*i+dim_obs]  # obs x of agent i
-            o_loc_stacker = o_loc_stacker + self.phi_loc(xi[:, 0:6]).cuda()  # o_loc
-            # o_ext_stacker = o_ext_stacker + xi[:, 6:8]
-            xi_oij = xi[:, 8:]
-            for k in range(N-1):
-                xi_oij_k = xi_oij[:, 5*k:5*k+5]
-                o_ij_stacker = o_ij_stacker + self.phi_oij(xi_oij_k).cuda()
-        o_loc_stacker = o_loc_stacker/N
-        # o_ext_stacker = o_ext_stacker/N
-        o_ij_stacker = o_ij_stacker/(N*(N-1))
-        x = torch.cat((o_loc_stacker, o_ij_stacker), dim=1)  # 64+64 s
-        # print('critic x shape is:{} '.format(x.shape))
         x = self.fc1(x)
         x = self.fc2(x)
+        x = self.fc3(x)
         return x
 
 

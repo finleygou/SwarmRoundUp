@@ -215,27 +215,27 @@ class Scenario(BaseScenario):
         k2 = 0.8
 
         if d_0<0.1 and d_1<0.1 and d_2<0.1:
-            print('ternimal triggered')
+            # print('ternimal triggered')
             return 10 # 5    # terminate reward
 
         if agent.i == 0:
             r_d = -k1*d_0
             if d_0<0.15:
-                return 5
+                return 5+r_d
             # d_left = d_0
         elif agent.i == 1:
             r_d = -k1*d_1
             if d_1<0.15:
-                return 5
+                return 5+r_d
             # d_left = d_1
         else:
             r_d = -k1*d_2
             if d_2<0.15:
-                return 5
+                return 5+r_d
             # d_left = d_2
 
         r_coop = 3*(np.exp(-k2*sigma_d) - 1)
-        r_step = 0.6*r_d+0.4*r_coop
+        r_step = 0.7*r_d+0.3*r_coop
 
         return r_step
         # '''
@@ -281,35 +281,11 @@ class Scenario(BaseScenario):
     # observation for adversary agents
     def observation(self, agent, world):
         '''
-        o_loc: 1*6
+        o_loc: 1*10
         o_ext: 1*2
-        o_ij:5*(N-1)
         '''
         if self.use_CL:
             self.set_CL(glv.get_value('CL_ratio'))
-        # target = self.good_agents(world)[0]  # moving target
-        # adversaries = self.adversaries(world)
-        # dist_vec = agent.state.p_pos - target.state.p_pos
-        # vel_vec = agent.state.p_vel - target.state.p_vel
-        # # calculate o_loc：
-        # Q_iM = self.GetAcuteAngle(-dist_vec, agent.state.p_vel)
-        # Q_iM_dot = np.dot(vel_vec, -dist_vec)/np.sum(np.square(dist_vec))
-        # d_i = np.linalg.norm(dist_vec) - self.d_cap
-        # d_i_dot = (dist_vec[0]*vel_vec[0]+dist_vec[1]*vel_vec[1])/np.linalg.norm(dist_vec)
-        # o_loc = [Q_iM, Q_iM_dot, d_i, d_i_dot, np.linalg.norm(agent.state.p_vel), agent.state.last_a]  # 1*6
-        # # print(o_loc)
-        # # calculate o_ext：
-        # _, left_nb_angle, right_nb_angle = self.find_neighbors(agent, adversaries, target)  # nb:neighbor
-        # delta_alpha = left_nb_angle - right_nb_angle
-        # d_list = [np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap for adv in adversaries]   # left d for all adv
-        # d_mean = np.mean(d_list)
-        # o_ext = [delta_alpha, d_mean]  # 1*2
-        # # communication of all other agents
-
-        # obs_concatenate = np.concatenate([o_loc] + [o_ext])  # 1*6+1*2
-        # # print(obs_concatenate)
-        # return obs_concatenate  
-
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
         dist_vec = agent.state.p_pos - target.state.p_pos
@@ -319,7 +295,7 @@ class Scenario(BaseScenario):
         Q_iM_dot = np.dot(vel_vec, -dist_vec)/np.sum(np.square(dist_vec))
         d_i = np.linalg.norm(dist_vec) - self.d_cap
         d_i_dot = (dist_vec[0]*vel_vec[0]+dist_vec[1]*vel_vec[1])/np.linalg.norm(dist_vec)
-        o_loc = [Q_iM, Q_iM_dot, d_i, d_i_dot, np.linalg.norm(agent.state.p_vel), agent.state.last_a]  # 1*6
+        o_loc = [dist_vec[0], dist_vec[1], vel_vec[0], vel_vec[1], Q_iM, Q_iM_dot, d_i, d_i_dot, np.linalg.norm(agent.state.p_vel), agent.state.last_a]  # 1*10
         # print(o_loc)
         # calculate o_ext：
         _, left_nb_angle, right_nb_angle = self.find_neighbors(agent, adversaries, target)  # nb:neighbor
@@ -328,29 +304,8 @@ class Scenario(BaseScenario):
         d_mean = np.mean(d_list)
         o_ext = [delta_alpha, d_mean]  # 1*2
         # communication of all other agents
-        o_ij = np.array([])  # 1*N*5
-        for adv_j in adversaries:
-            if adv_j is agent: continue
-            # [id1, id2], _, _ = self.find_neighbors(agent, adversaries, target)
-            # if adv_j.i == id1 or adv_j.i == id2: # 只考虑邻居的
-            d_ij_vec = agent.state.p_pos - adv_j.state.p_pos
-            d_ij = np.linalg.norm(d_ij_vec)
-            Q_ij = self.GetAcuteAngle(-d_ij_vec, agent.state.p_vel)
-            Q_ji = self.GetAcuteAngle(adv_j.state.p_vel, d_ij_vec)
-            dist_j_vec = adv_j.state.p_pos - target.state.p_pos
-            d_j = np.linalg.norm(dist_j_vec) - self.d_cap
-            delta_d_ij = d_i - d_j
-            alpha_ij = self.GetAcuteAngle(dist_vec, dist_j_vec)
-            o_ij = np.concatenate([o_ij]+[np.array([d_ij, Q_ij, Q_ji, delta_d_ij, alpha_ij])])
-        
-        # assert len(o_ij) == 20, ('o_ij length not right')
-        # 只取邻居的特征
-        # print(o_ij)
-        # if len(o_ij) == 10:
-        #     o_ij = 0.5*(o_ij[0:5]+o_ij[5:10])
-        # else: print('o_ij length not right')
 
-        obs_concatenate = np.concatenate([o_loc] + [o_ext] + [o_ij]) # concatenate要用两层括号
+        obs_concatenate = np.concatenate([o_loc] + [o_ext])  # 1*10+1*2
         # print(obs_concatenate)
         return obs_concatenate  
 

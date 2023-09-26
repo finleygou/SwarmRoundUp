@@ -4,7 +4,7 @@ import numpy as np
 from .util import init, get_clones
 
 """MLP modules.
-   input: 6+2+5*(N-1) = 28  output: 1*32
+   input: 6+5+5 = 16 output: 1*64
 """
 
 class A_MLPLayer(nn.Module):
@@ -20,10 +20,10 @@ class A_MLPLayer(nn.Module):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain=gain)
         
         self.fc1 = nn.Sequential(
-            init_(nn.Linear(72, 64)), active_func, nn.LayerNorm(64))
+            init_(nn.Linear(16, 128)), active_func, nn.LayerNorm(128))
         
         self.fc2 = nn.Sequential(
-            init_(nn.Linear(64, 32)), active_func, nn.LayerNorm(32))
+            init_(nn.Linear(128, 64)), active_func, nn.LayerNorm(64))
 
     def forward(self, x):        
         # print('actor x shape is:{} '.format(x.shape))
