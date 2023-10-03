@@ -16,9 +16,9 @@ class AgentState(EntityState):
         # communication utterance
         self.c = None
         # physical angle
-        self.phi = None  # 0-2pi
+        self.phi = 0  # 0-2pi
         # physical angular velocity
-        self.p_omg = None 
+        self.p_omg = 0
         self.last_a = np.array([0, 0])
 
 # action of the agent

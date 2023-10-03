@@ -23,6 +23,12 @@ class MultiAgentEnv(gym.Env):
                  shared_viewer=True, discrete_action=False):
         # discrete_action为false,即指定动作为Box类型
 
+        # set CL
+        self.use_policy = 0
+        self.use_CL = True
+        self.CL_ratio = 0
+        self.Cp= 0.3
+
         self.world = world
         self.world_length = self.world.world_length
         self.current_step = 0
@@ -104,11 +110,6 @@ class MultiAgentEnv(gym.Env):
             self.viewers = [None] * self.n
         self._reset_render()
 
-        # set CL
-        self.use_CL = False
-        self.CL_ratio = 0
-        self.Cp= 0.2
-
     def seed(self, seed=None):
         if seed is None:
             np.random.seed(1)
@@ -129,8 +130,9 @@ class MultiAgentEnv(gym.Env):
             terminate.append(agent.done)
         # print('done in env:', terminate)
         # set action for each agent
+        policy_u = self.policy_u(self.agents, self.world.scripted_agents[0])
         for i, agent in enumerate(self.agents):  # adversaries only
-            self._set_action(action_n[i], agent, self.action_space[i])
+            self._set_action(action_n[i], policy_u[i], agent, self.action_space[i])
         
         # advance world state
         self.world.step()  # core.step(), after done, all stop. 不能传参
@@ -147,8 +149,11 @@ class MultiAgentEnv(gym.Env):
             info_n.append(info)
         # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
         if all(terminate)==True:
-            pass
-            # print('terminate triggered')
+            # pass
+            if self.CL_ratio > self.Cp:
+                print('terminate triggered')
+            else:
+                pass
             # done_n = terminate
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
@@ -205,7 +210,7 @@ class MultiAgentEnv(gym.Env):
         return self.reward_callback(agent, self.world)
 
     # set env action for a particular agent
-    def _set_action(self, action, agent, action_space, time=None):
+    def _set_action(self, action, policy_u, agent, action_space, time=None):
         agent.action.u = np.zeros(self.world.dim_p)
         agent.action.c = np.zeros(self.world.dim_c)
         # process action
@@ -246,17 +251,19 @@ class MultiAgentEnv(gym.Env):
                         action[0][:] = 0.0
                         action[0][p] = 1.0
                     # # 以下是给agent设置动作，与小车端的物理接口是一样的。
-                    # network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
-                    # relative_pos_vec = agent.target_point - agent.state.p_pos
-                    # policy_output = (relative_pos_vec)*0.4 - agent.state.p_vel
-                    # if self.use_CL == True:
-                    #     if self.CL_ratio < self.Cp:
-                    #         agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
-                    #     else:
-                    #         agent.action.u = network_output
-                    # else: agent.action.u = network_output
-                    network_output = action[0][0:self.world.dim_p]
-                    agent.action.u = network_output
+                    network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+                    policy_output = (policy_u.T)[0]
+                    if self.use_CL == True:
+                        if self.CL_ratio < self.Cp:
+                            # fa2 = network_output if np.linalg.norm(policy_output - network_output)<1.2 else policy_output
+                            agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
+                        else:
+                            agent.action.u = network_output
+                    elif self.use_policy:
+                        agent.action.u = policy_output
+                    else: agent.action.u = network_output
+                    # network_output = action[0][0:self.world.dim_p]
+                    # agent.action.u = network_output
                     d = self.world.dim_p
                     # print("action in env is {}".format(action))
             # print("1 action in env is {}".format(action))
@@ -270,6 +277,62 @@ class MultiAgentEnv(gym.Env):
 
         # make sure we used all elements of action
         assert len(action) == 0, 'some action not used'
+
+    def policy_u(self, agents, target):
+            num_agents = len(agents)
+            d_cap = 1.0
+            U = np.zeros((num_agents, 2, 1))
+            # target_pt = np.zeros((num_agents, 2, 1))
+            base_vec = d_cap*np.array([0,-1])
+            delta_theta = 2*np.pi/5
+            # k1, k2, k3 = 0.08, 0.5, 1.2
+            k1, k2 = 1.5, 0.5
+            k3, k4 = 0.1, 0.8
+            k_nb = 0.6
+            k_t = 0.4
+            q_th = 1.0  # 智能体之间的安全半径
+            q_th_T = 1.0 # 智能与目标之间的安全半径
+            d_switch = 0.75
+            for i, agent in enumerate(agents):
+                u_i = np.array([0,0])
+                theta_ = (3+i)*delta_theta
+                relative_target = +np.array([base_vec[0]*np.cos(theta_)-base_vec[1]*np.sin(theta_), 
+                                        base_vec[0]*np.sin(theta_)+base_vec[1]*np.cos(theta_)])
+                target_pt_i = target.state.p_pos+relative_target
+                # print('i:{},target_pt:{}'.format(i, target_pt_i))
+                dist_vec = agent.state.p_pos - target_pt_i
+                vel_vec = agent.state.p_vel - target.state.p_vel
+                # 与期望点之间的引力
+                if np.linalg.norm(dist_vec) < d_switch:
+                    v_exp = -k1*dist_vec - k2*vel_vec
+                    u_i = (v_exp - agent.state.p_vel)/self.world.dt
+                else:
+                    u_i = -k3*dist_vec - k4*vel_vec
+                
+                # 与目标之间的斥力
+                vec_x = agent.state.p_pos - target.state.p_pos
+                vec_x_norm = np.linalg.norm(vec_x)
+                if vec_x_norm < q_th_T:
+                    u_norm = k_t*(q_th_T-vec_x_norm)/(vec_x_norm**3)/(q_th_T)
+                    u_ = u_norm*vec_x/vec_x_norm
+                    u_i = u_i + u_
+                
+                # 与邻居之间的斥力
+                for adv in agents:
+                    if adv is agent: continue
+                    vec_x = agent.state.p_pos - adv.state.p_pos
+                    vec_x_norm = np.linalg.norm(vec_x)
+                    if vec_x_norm < q_th:
+                        u_norm = k_nb*(q_th-vec_x_norm)/(vec_x_norm**3)/(q_th)
+                        u_ = u_norm*vec_x/vec_x_norm
+                        u_i = u_i + u_
+                # limit u
+                ui_norm = np.linalg.norm(u_i)
+                if ui_norm>agent.max_accel:
+                    u_i = u_i*agent.max_accel/ui_norm
+                # print('i:{},u_i:{}'.format(i, u_i))
+                U[i] = u_i.reshape(2,1)
+            return U
 
     def _set_CL(self, CL_ratio):
         # 通过多进程set value，与env_wraapper直接关联，不能改。
@@ -421,7 +484,7 @@ class MultiAgentEnv(gym.Env):
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)
-                self.line[e] = self.viewers[i].draw_line(entity.state.p_pos, entity.state.p_pos+entity.state.p_vel*0.5)
+                self.line[e] = self.viewers[i].draw_line(entity.state.p_pos, entity.state.p_pos+entity.state.p_vel*1.0)
 
                 if 'agent' in entity.name:
                     self.render_geoms[e].set_color(*entity.color, alpha=0.5)

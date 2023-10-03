@@ -12,7 +12,7 @@ class Scenario(BaseScenario):
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 2.0
-        self.use_CL = 1  # 是否使用课程式训练(render时改为false)
+        self.use_CL = 0  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self,args):
@@ -32,7 +32,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.25
+            agent.max_speed = 0.5 if agent.adversary else 0.3
             agent.max_angular = 0.0 if agent.adversary else 0.0 
 
         # make initial conditions
@@ -66,7 +66,7 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 0.5*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
+                r_, theta_ = 0.3*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
                 if self.use_CL:
                     init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
                 else:
@@ -151,30 +151,16 @@ class Scenario(BaseScenario):
                 d_min = d_
         # if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
-        ####### calculate dones ########
-        dones = []
-        for adv in adversaries:
-            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
-            _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
-            # print('i:{}, leftE:{}, rightE:{}'.format(adv.i, abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
-            if abs(di_adv)<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
-                dones.append(True)
-            else: dones.append(False)
-        if all(dones)==True:  
-            agent.done = True
-            target.done = True
-            return 10
-        else:  agent.done = False
         #################################
         k1, k2, k3 = 1.0, 2.0, 2.0
         # w1, w2, w3 = 0.35, 0.4, 0.25
-        w1, w2, w3 = 0.35, 0.4, 0.0
+        w1, w2, w3 = 0.4, 0.6, 0.0
 
         # formaion reward r_f
         form_vec = np.array([0.0, 0.0])
         for adv in adversaries:
             dist_vec = adv.state.p_pos - target.state.p_pos
-            form_vec = form_vec + dist_vec/np.sum(np.square(dist_vec))
+            form_vec = form_vec + dist_vec
         r_f = np.exp(-k1*np.linalg.norm(form_vec)) - 1
         # distance coordination reward r_d
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
@@ -182,10 +168,24 @@ class Scenario(BaseScenario):
         r_l = 2/(1+np.exp(-k3*d_min))-2
 
         r_step = w1*r_f + w2*r_d + w3*r_l
-            
 
-        if abs(d_i)<0.2 and abs(left_nb_angle - exp_alpha)<0.3 and abs(right_nb_angle - exp_alpha)<0.3: # 30°
-            return 5 # 5    # terminate reward
+        ####### calculate dones ########
+        dones = []
+        for adv in adversaries:
+            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
+            _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
+            # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
+            if di_adv<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+                dones.append(True)
+            else: dones.append(False)
+        # print(dones)
+        if all(dones)==True:  
+            agent.done = True
+            target.done = True
+            return 10+r_step
+        else:  agent.done = False
+        if abs(d_i)<0.2 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
+            return 5+r_step # 5    # terminate reward
         else:
             return r_step
 
@@ -212,7 +212,6 @@ class Scenario(BaseScenario):
         beta_dot = angle_vel_pos_dot if beta > 0 else -angle_vel_pos_dot
         omega = v_t/d_iT
         omega_dot = a_t/d_iT - v_t*v_r/d_iT/d_iT
-        print(omega_dot)
         o_loc = [d_iT, d_iT_dot, beta, beta_dot, omega, omega_dot]  # 1*6
         # calculate o_nb：
         [lf_id, rt_id], left_nb_angle, right_nb_angle = find_neighbors(agent, adversaries, target)  # nb:neighbor
@@ -255,13 +254,22 @@ class Scenario(BaseScenario):
             
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries):
-    set_CL = True
+    set_CL = 0
     Cp = 0.4
     Cv = 0.4
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate
-        escape_v = np.array([0.0, 0.0])
+        # 减速到0
+        target_v = np.linalg.norm(agent.state.p_vel)
+        if target_v < 1e-3:
+            acc = np.array([0,0])
+        else:
+            acc = -agent.state.p_vel/target_v*agent.max_accel
+        a_x, a_y = acc[0], acc[1]
+        v_x = agent.state.p_vel[0] + a_x*dt
+        v_y = agent.state.p_vel[1] + a_y*dt
+        escape_v = np.array([v_x, v_y])
     else:
         if set_CL:
             max_v = agent.max_speed
