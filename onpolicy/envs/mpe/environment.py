@@ -24,7 +24,7 @@ class MultiAgentEnv(gym.Env):
         # discrete_action为false,即指定动作为Box类型
 
         # set CL
-        self.use_policy = 0
+        self.use_policy = 1
         self.use_CL = True
         self.CL_ratio = 0
         self.Cp= 0.3
@@ -152,6 +152,8 @@ class MultiAgentEnv(gym.Env):
             # pass
             if self.CL_ratio > self.Cp:
                 print('terminate triggered')
+            elif self.use_policy:
+                print('terminate triggered')
             else:
                 pass
             # done_n = terminate
@@ -255,8 +257,8 @@ class MultiAgentEnv(gym.Env):
                     policy_output = (policy_u.T)[0]
                     if self.use_CL == True:
                         if self.CL_ratio < self.Cp:
-                            # fa2 = network_output if np.linalg.norm(policy_output - network_output)<1.2 else policy_output
-                            agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*network_output
+                            fa2 = np.dot(network_output, policy_output)/np.dot(policy_output, policy_output)*policy_output if np.linalg.norm(policy_output - network_output)<1.0 else policy_output
+                            agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*fa2
                         else:
                             agent.action.u = network_output
                     elif self.use_policy:
@@ -282,23 +284,27 @@ class MultiAgentEnv(gym.Env):
             num_agents = len(agents)
             d_cap = 1.0
             U = np.zeros((num_agents, 2, 1))
-            # target_pt = np.zeros((num_agents, 2, 1))
+            target_pts = [None] * num_agents
             base_vec = d_cap*np.array([0,-1])
-            delta_theta = 2*np.pi/5
-            # k1, k2, k3 = 0.08, 0.5, 1.2
+            delta_theta = 2*np.pi/num_agents
+            for i in range(num_agents):
+                theta_ = (3+i)*delta_theta
+                relative_target = +np.array([base_vec[0]*np.cos(theta_)-base_vec[1]*np.sin(theta_), base_vec[0]*np.sin(theta_)+base_vec[1]*np.cos(theta_)])
+                target_pt_i = target.state.p_pos+relative_target
+                target_pts[i] = target_pt_i
+
             k1, k2 = 1.5, 0.5
             k3, k4 = 0.1, 0.8
             k_nb = 0.6
             k_t = 0.4
+            k_pt = 0.4
             q_th = 1.0  # 智能体之间的安全半径
             q_th_T = 1.0 # 智能与目标之间的安全半径
+            q_th_pt = 0.4 # 智能体与其他期望点之间的安全半径
             d_switch = 0.75
             for i, agent in enumerate(agents):
                 u_i = np.array([0,0])
-                theta_ = (3+i)*delta_theta
-                relative_target = +np.array([base_vec[0]*np.cos(theta_)-base_vec[1]*np.sin(theta_), 
-                                        base_vec[0]*np.sin(theta_)+base_vec[1]*np.cos(theta_)])
-                target_pt_i = target.state.p_pos+relative_target
+                target_pt_i = target_pts[i]
                 # print('i:{},target_pt:{}'.format(i, target_pt_i))
                 dist_vec = agent.state.p_pos - target_pt_i
                 vel_vec = agent.state.p_vel - target.state.p_vel
@@ -326,6 +332,20 @@ class MultiAgentEnv(gym.Env):
                         u_norm = k_nb*(q_th-vec_x_norm)/(vec_x_norm**3)/(q_th)
                         u_ = u_norm*vec_x/vec_x_norm
                         u_i = u_i + u_
+                
+                # 与其他target point之间的斥力
+                for pt in target_pts:
+                    if pt is target_pt_i: continue
+                    vec_x = agent.state.p_pos - pt
+                    vec_x_norm = np.linalg.norm(vec_x)
+                    if vec_x_norm < q_th_pt:
+                        if np.dot(vec_x, target_pt_i - pt) < 0:
+                            u_norm = k_pt*(q_th_pt-vec_x_norm)/(vec_x_norm**3)/(q_th_pt)
+                            u_ = u_norm*vec_x/vec_x_norm
+                            u_i = u_i + u_
+                        else:
+                            pass
+
                 # limit u
                 ui_norm = np.linalg.norm(u_i)
                 if ui_norm>agent.max_accel:
@@ -485,6 +505,7 @@ class MultiAgentEnv(gym.Env):
             for e, entity in enumerate(self.world.entities):
                 self.render_geoms_xform[e].set_translation(*entity.state.p_pos)
                 self.line[e] = self.viewers[i].draw_line(entity.state.p_pos, entity.state.p_pos+entity.state.p_vel*1.0)
+                # 绘制agent速度
 
                 if 'agent' in entity.name:
                     self.render_geoms[e].set_color(*entity.color, alpha=0.5)
