@@ -24,10 +24,10 @@ class MultiAgentEnv(gym.Env):
         # discrete_action为false,即指定动作为Box类型
 
         # set CL
-        self.use_policy = 1
+        self.use_policy = 0
         self.use_CL = True
         self.CL_ratio = 0
-        self.Cp= 0.3
+        self.Cp= 1.0
 
         self.world = world
         self.world_length = self.world.world_length
@@ -138,15 +138,37 @@ class MultiAgentEnv(gym.Env):
         self.world.step()  # core.step(), after done, all stop. 不能传参
 
         # record observation for each agent
+        is_good_action = []
         for i, agent in enumerate(self.agents):
             obs_n.append(self._get_obs(agent))
-            reward_n.append([self._get_reward(agent)])
+            if self.use_CL and self.CL_ratio<self.Cp and self.use_policy==False:
+                loss = np.linalg.norm(agent.policy_action - agent.network_action)
+                policy_orient_reward = np.exp(-2*loss) - 1 # -1~0
+                if loss < 0.2:
+                    policy_orient_reward = 1+policy_orient_reward
+                    is_good_action.append(True)  # 0~1
+                else:
+                    is_good_action.append(False)
+                agent_reward = policy_orient_reward
+                reward_n.append([agent_reward])
+            else:
+                agent_reward = self._get_reward(agent)
+                reward_n.append([agent_reward])
             done_n.append(self._get_done(agent))
-            info = {'individual_reward': self._get_reward(agent)}
+            info = {'individual_reward': agent_reward}
             env_info = self._get_info(agent)
             if 'fail' in env_info.keys():
                 info['fail'] = env_info['fail']
             info_n.append(info)
+        
+        if all(is_good_action)==True:
+            reward_n = []
+            info_n = []
+            for i in range(len(self.agents)):
+                reward_n.append([5])
+                info_n.append({'individual_reward': 5})
+
+        
         # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
         if all(terminate)==True:
             # pass
@@ -253,12 +275,15 @@ class MultiAgentEnv(gym.Env):
                         action[0][:] = 0.0
                         action[0][p] = 1.0
                     # # 以下是给agent设置动作，与小车端的物理接口是一样的。
+                    # 都是-1~1之间的[u0, u1]数组
                     network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
                     policy_output = (policy_u.T)[0]
                     if self.use_CL == True:
                         if self.CL_ratio < self.Cp:
                             fa2 = np.dot(network_output, policy_output)/np.dot(policy_output, policy_output)*policy_output if np.linalg.norm(policy_output - network_output)<1.0 else policy_output
                             agent.action.u = (1-self.CL_ratio/self.Cp)*policy_output+self.CL_ratio/self.Cp*fa2
+                            agent.policy_action = policy_output
+                            agent.network_action = network_output
                         else:
                             agent.action.u = network_output
                     elif self.use_policy:
@@ -293,12 +318,12 @@ class MultiAgentEnv(gym.Env):
                 target_pt_i = target.state.p_pos+relative_target
                 target_pts[i] = target_pt_i
 
-            k1, k2 = 1.5, 0.5
-            k3, k4 = 0.1, 0.8
-            k_nb = 0.6
-            k_t = 0.4
-            k_pt = 0.4
-            q_th = 1.0  # 智能体之间的安全半径
+            k1, k2 = 3.6, 1.2
+            k3, k4 = 0.25, 2.0
+            k_nb = 1.0
+            k_t = 0.5  # 与target的斥力
+            k_pt = 1.2  # 与其他target pt的斥力
+            q_th = 0.9  # 智能体之间的安全半径
             q_th_T = 1.0 # 智能与目标之间的安全半径
             q_th_pt = 0.4 # 智能体与其他期望点之间的安全半径
             d_switch = 0.75
@@ -329,9 +354,12 @@ class MultiAgentEnv(gym.Env):
                     vec_x = agent.state.p_pos - adv.state.p_pos
                     vec_x_norm = np.linalg.norm(vec_x)
                     if vec_x_norm < q_th:
+                        # if np.dot(vec_x, target_pt_i - agent.state.p_pos) < 0:
                         u_norm = k_nb*(q_th-vec_x_norm)/(vec_x_norm**3)/(q_th)
                         u_ = u_norm*vec_x/vec_x_norm
                         u_i = u_i + u_
+                        # else:
+                        #     pass
                 
                 # 与其他target point之间的斥力
                 for pt in target_pts:
@@ -347,9 +375,21 @@ class MultiAgentEnv(gym.Env):
                             pass
 
                 # limit u
-                ui_norm = np.linalg.norm(u_i)
-                if ui_norm>agent.max_accel:
-                    u_i = u_i*agent.max_accel/ui_norm
+                if abs(u_i[0]) > abs(u_i[1]):
+                    if abs(u_i[0])>1:
+                        u_i[1] = u_i[1]/abs(u_i[0])
+                        u_i[0] = 1 if u_i[0] > 0 else -1
+                    else:
+                        pass
+                else:
+                    if abs(u_i[1])>1:
+                        u_i[0] = u_i[0]/abs(u_i[1])
+                        u_i[1] = 1 if u_i[1] > 0 else -1
+                    else:
+                        pass
+                # ui_norm = np.linalg.norm(u_i)
+                # if ui_norm>1.4:  # sqrt2
+                #     u_i = u_i*1.4/ui_norm
                 # print('i:{},u_i:{}'.format(i, u_i))
                 U[i] = u_i.reshape(2,1)
             return U

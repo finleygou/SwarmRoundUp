@@ -95,6 +95,8 @@ class Agent(Entity):
         # finley
         self.done = False
         self.target_point = None
+        self.policy_action = np.array([0,0])
+        self.network_action = np.array([0,0])
 
 # multi-agent world
 class World(object):
