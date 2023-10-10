@@ -32,7 +32,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.3
+            agent.max_speed = 0.5 if agent.adversary else 0.15
             agent.max_angular = 0.0 if agent.adversary else 0.0 
 
         # make initial conditions
@@ -71,8 +71,8 @@ class Scenario(BaseScenario):
                     init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
                 else:
                     init_dist = self.init_target_pos
-                agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])  # (0,5)为圆心
-                # agent.state.p_pos = np.array([0.0, init_dist+(r_-0.5)*2])
+                r_ = 0
+                agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy
                 agent.done = False
@@ -139,7 +139,8 @@ class Scenario(BaseScenario):
         sigma_d = np.std(d_list)
         exp_alpha = np.pi*2/N_adv
         # find neighbors (方位角之间不存在别的agent)
-        nb_idx, left_nb_angle, right_nb_angle = find_neighbors(agent, adversaries, target)  # nb:neighbor
+        [left_id, right_id], left_nb_angle, right_nb_angle = find_neighbors(agent, adversaries, target)  # nb:neighbor
+        # print(left_id, right_id)
         delta_alpha = abs(left_nb_angle - right_nb_angle)
         # find min d between allies
         d_min = 20
@@ -152,9 +153,9 @@ class Scenario(BaseScenario):
         # if dist_i < d_min: d_min = dist_i  # 与目标的碰撞也考虑进去，要围捕不能撞上
 
         #################################
-        k1, k2, k3 = 1.0, 2.0, 2.0
+        k1, k2, k3 = 0.2, 0.4, 2.0
         # w1, w2, w3 = 0.35, 0.4, 0.25
-        w1, w2, w3 = 0.4, 0.6, 0.0
+        w1, w2, w3 = 0.35, 0.5, 0.15
 
         # formaion reward r_f
         form_vec = np.array([0.0, 0.0])
@@ -184,8 +185,14 @@ class Scenario(BaseScenario):
             target.done = True
             return 10+r_step
         else:  agent.done = False
-        if abs(d_i)<0.2 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
+
+        left_nb_done = True if (abs(left_nb_angle - exp_alpha)<0.3 and abs(d_list[left_id])<0.2) else False
+        right_nb_done = True if (abs(right_nb_angle - exp_alpha)<0.3 and abs(d_list[right_id])<0.2) else False
+
+        if abs(d_i)<0.2 and left_nb_done and right_nb_done: # 30°
             return 5+r_step # 5    # terminate reward
+        elif abs(d_i)<0.2 and (left_nb_done or right_nb_done): # 30°
+            return 2+r_step
         else:
             return r_step
 
@@ -256,7 +263,7 @@ class Scenario(BaseScenario):
 def escape_policy(agent, adversaries):
     set_CL = 0
     Cp = 0.4
-    Cv = 0.4
+    Cv = 0.2
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate
