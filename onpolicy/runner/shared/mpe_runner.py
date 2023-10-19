@@ -5,6 +5,7 @@ from onpolicy.runner.shared.base_runner import Runner
 import wandb
 import imageio
 from onpolicy import global_var as glv
+import csv
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -16,6 +17,13 @@ class MPERunner(Runner):
         self.use_train_render = False
 
     def run(self):
+        if self.all_args.save_data:
+            #csv
+            file = open('Rewards.csv', 'w', encoding='utf-8', newline="")
+            writer = csv.writer(file)
+            writer.writerow(['step', 'average', 'min', 'max', 'std'])
+            file.close()
+            
         self.warmup()   
 
         start = time.time()
@@ -87,6 +95,18 @@ class MPERunner(Runner):
                                 idv_rews.append(info[agent_id]['individual_reward'])
                         agent_k = 'agent%i/individual_rewards' % agent_id
                         env_infos[agent_k] = idv_rews
+
+                r = self.buffer.rewards.mean(2).sum(axis=(0, 2))
+                Average = np.mean(r)
+                Min = np.min(r)
+                Max = np.max(r)
+                Std = np.std(r)
+                
+                if self.all_args.save_data:
+                    file = open('Rewards.csv', 'a', encoding='utf-8', newline="")
+                    writer = csv.writer(file)
+                    writer.writerow([total_num_steps, Average, Min, Max, Std])
+                    file.close()
 
                 train_infos["average_episode_rewards"] = np.mean(self.buffer.rewards) * self.episode_length
                 print("average episode rewards is {}".format(train_infos["average_episode_rewards"]))

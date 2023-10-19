@@ -30,6 +30,9 @@ class MultiAgentEnv(gym.Env):
         self.Cp= 0.6 # 1.0 # 0.3
         self.JS_thre = 0
 
+        # terminate
+        self.is_ternimate = False
+
         self.world = world
         self.world_length = self.world.world_length
         self.current_step = 0
@@ -126,13 +129,27 @@ class MultiAgentEnv(gym.Env):
         info_n = []
         self.agents = self.world.policy_agents  # adversaries only
 
-        start_ratio = 0.85
+        start_ratio = 0.80
         self.JS_thre = int(self.world_length*start_ratio*set_JS_curriculum(self.CL_ratio/self.Cp))
         
         terminate = []
         for i, agent in enumerate(self.agents):
             terminate.append(agent.done)
-        # print('done in env:', terminate)
+        
+        if all(terminate)==True:
+            self.is_ternimate = True
+            # pass
+            if self.CL_ratio > self.Cp:
+                # print('terminate triggered')
+                pass
+            elif self.use_policy:
+                # print('terminate triggered')
+                pass
+            else:
+                pass
+        else:
+            self.is_ternimate = False
+
         # set action for each agent
         policy_u = self.policy_u(self.agents, self.world.scripted_agents[0])
         for i, agent in enumerate(self.agents):  # adversaries only
@@ -152,25 +169,6 @@ class MultiAgentEnv(gym.Env):
             if 'fail' in env_info.keys():
                 info['fail'] = env_info['fail']
             info_n.append(info)
-        
-        # if all(is_good_action)==True:
-        #     reward_n = []
-        #     info_n = []
-        #     for i in range(len(self.agents)):
-        #         reward_n.append([5])
-        #         info_n.append({'individual_reward': 5})
-
-        
-        # print('done_n is: {}, terminate is:{}'.format(done_n, terminate))
-        if all(terminate)==True:
-            # pass
-            if self.CL_ratio > self.Cp:
-                print('terminate triggered')
-            elif self.use_policy:
-                print('terminate triggered')
-            else:
-                pass
-            # done_n = terminate
 
         # all agents get total reward in cooperative case, if shared reward, all agents have the same reward, and reward is sum
         reward = np.sum(reward_n)
@@ -269,6 +267,15 @@ class MultiAgentEnv(gym.Env):
                     # # 以下是给agent设置动作，与小车端的物理接口是一样的。
                     # 都是-1~1之间的[u0, u1]数组
                     network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
+
+                    if self.is_ternimate and self.CL_ratio > self.Cp:
+                        # agent 减速到 0
+                        target_v = np.linalg.norm(agent.state.p_vel)
+                        if target_v < 1e-3:
+                            acc = np.array([0,0])
+                        else:
+                            acc = -agent.state.p_vel/target_v*agent.max_accel
+                        network_output[0], network_output[1] = acc[0], acc[1]
 
                     # rescale to 0~1
                     # rescale = 0.5*(network_output+1)  # 0~1
@@ -615,7 +622,7 @@ def limit_action_inf_norm(action, max_limit):
 
 def set_JS_curriculum(CL_ratio):
     # func_ = 1-CL_ratio
-    k = 2.4
+    k = 2.0
     delta = 1-(np.exp(-k*(-1))-np.exp(k*(-1)))/(np.exp(-k*(-1))+np.exp(k*(-1)))
     x = 2*CL_ratio-1
     y_mid = (np.exp(-k*x)-np.exp(k*x))/(np.exp(-k*x)+np.exp(k*x))-delta*x**3
