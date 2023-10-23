@@ -60,6 +60,7 @@ class Entity(object):
         # commu channel
         self.channel = None
         self.R = None
+        self.delta = None
 
     @property
     def mass(self):

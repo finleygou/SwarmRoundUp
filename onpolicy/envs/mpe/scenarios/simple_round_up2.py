@@ -35,12 +35,14 @@ class Scenario(BaseScenario):
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
             agent.max_speed = 0.5 if agent.adversary else 0.15
             agent.max_angular = 0.0 if agent.adversary else 0.0
+            agent.R = 0.15  # 小车的半径
+            agent.delta = 0.1  # 安全半径
 
         world.landmarks = [Landmark() for i in range(num_landmarks)]
         for i, landmark in enumerate(world.landmarks):
             landmark.i = i
             landmark.name = 'landmark %d' % i
-            landmark.R = 0.25
+            landmark.R = 0.25  # 需要设置成0.1~0.25随机
             landmark.delta = 0.15
             landmark.Ls = landmark.R + landmark.delta
 
@@ -52,7 +54,6 @@ class Scenario(BaseScenario):
         # properties and initial states for agents
         for i, agent in enumerate(world.agents):
             agent.color = np.array([0.45, 0.95, 0.45]) if not agent.adversary else np.array([0.95, 0.45, 0.45])
-            agent.R = 0.15
             if i == 0:
                 agent.state.p_pos = np.array([-1.6, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
@@ -91,10 +92,10 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                landmark.state.p_pos = np.array([-1.0, 1.5])
+                landmark.state.p_pos = np.array([-10.0, 1.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 1:
-                landmark.state.p_pos = np.array([1.0, 1.5])
+                landmark.state.p_pos = np.array([10.0, 1.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):

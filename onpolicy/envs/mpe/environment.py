@@ -37,6 +37,7 @@ class MultiAgentEnv(gym.Env):
         self.world_length = self.world.world_length
         self.current_step = 0
         self.agents = self.world.policy_agents
+        self.landmarks = self.world.landmarks
         # set required vectorized gym env property
         self.n = len(world.policy_agents)
         # scenario callbacks
@@ -151,7 +152,7 @@ class MultiAgentEnv(gym.Env):
             self.is_ternimate = False
 
         # set action for each agent
-        policy_u = self.policy_u(self.agents, self.world.scripted_agents[0])
+        policy_u = self.policy_u(self.landmarks, self.agents, self.world.scripted_agents[0])
         for i, agent in enumerate(self.agents):  # adversaries only
             self._set_action(action_n[i], policy_u[i], agent, self.action_space[i])
         
@@ -340,150 +341,57 @@ class MultiAgentEnv(gym.Env):
 
         # make sure we used all elements of action
         assert len(action) == 0, 'some action not used'
-    '''
-    def policy_u(self, agents, target):
-            num_agents = len(agents)
-            d_cap = 1.0
-            U = np.zeros((num_agents, 2, 1))
-            target_pts = [None] * num_agents
-            base_vec = d_cap*np.array([0,-1])
-            delta_theta = 2*np.pi/num_agents
-            for i in range(num_agents):
-                theta_ = (3+i)*delta_theta
-                relative_target = +np.array([base_vec[0]*np.cos(theta_)-base_vec[1]*np.sin(theta_), base_vec[0]*np.sin(theta_)+base_vec[1]*np.cos(theta_)])
-                target_pt_i = target.state.p_pos+relative_target
-                target_pts[i] = target_pt_i
 
-            k1, k2 = 3.6, 1.2
-            k3, k4 = 0.25, 2.0
-            k_nb = 1.0
-            k_t = 0.5  # 与target的斥力
-            k_pt = 1.2  # 与其他target pt的斥力
-            q_th = 0.9  # 智能体之间的安全半径
-            q_th_T = 1.0  # 智能与目标之间的安全半径
-            q_th_pt = 0.4  # 智能体与其他期望点之间的安全半径
-            d_switch = 0.75
-            for i, agent in enumerate(agents):
-                u_i = np.array([0,0])
-                target_pt_i = target_pts[i]
-                # print('i:{},target_pt:{}'.format(i, target_pt_i))
-                dist_vec = agent.state.p_pos - target_pt_i
-                vel_vec = agent.state.p_vel - target.state.p_vel
-                # 与期望点之间的引力
-                if np.linalg.norm(dist_vec) < d_switch:
-                    v_exp = -k1*dist_vec - k2*vel_vec
-                    u_i = (v_exp - agent.state.p_vel)/self.world.dt
-                else:
-                    u_i = -k3*dist_vec - k4*vel_vec
-                
-                # 与目标之间的斥力
-                vec_x = agent.state.p_pos - target.state.p_pos
-                vec_x_norm = np.linalg.norm(vec_x)
-                if vec_x_norm < q_th_T:
-                    u_norm = k_t*(q_th_T-vec_x_norm)/(vec_x_norm**3)/(q_th_T)
-                    u_ = u_norm*vec_x/vec_x_norm
-                    u_i = u_i + u_
-                
-                # 与邻居之间的斥力
-                for adv in agents:
-                    if adv is agent: continue
-                    vec_x = agent.state.p_pos - adv.state.p_pos
-                    vec_x_norm = np.linalg.norm(vec_x)
-                    if vec_x_norm < q_th:
-                        # if np.dot(vec_x, target_pt_i - agent.state.p_pos) < 0:
-                        u_norm = k_nb*(q_th-vec_x_norm)/(vec_x_norm**3)/(q_th)
-                        u_ = u_norm*vec_x/vec_x_norm
-                        u_i = u_i + u_
-                        # else:
-                        #     pass
-                
-                # 与其他target point之间的斥力
-                for pt in target_pts:
-                    if pt is target_pt_i: continue
-                    vec_x = agent.state.p_pos - pt
-                    vec_x_norm = np.linalg.norm(vec_x)
-                    if vec_x_norm < q_th_pt:
-                        if np.dot(vec_x, target_pt_i - pt) < 0:
-                            u_norm = k_pt*(q_th_pt-vec_x_norm)/(vec_x_norm**3)/(q_th_pt)
-                            u_ = u_norm*vec_x/vec_x_norm
-                            u_i = u_i + u_
-                        else:
-                            pass
-
-                u_i = limit_action_inf_norm(u_i, 1)
-
-                U[i] = u_i.reshape(2,1)
-            return U
-    '''
-    def policy_u(self, agents, target):
+    def policy_u(self, landmarks, agents, target):
         num_agents = len(agents)
-        d_cap = 1.0
         U = np.zeros((num_agents, 2, 1))
-        target_pts = [None] * num_agents
-        base_vec = d_cap * np.array([0, -1])
-        delta_theta = 2 * np.pi / num_agents
-        for i in range(num_agents):
-            theta_ = (3 + i) * delta_theta
-            relative_target = +np.array([base_vec[0] * np.cos(theta_) - base_vec[1] * np.sin(theta_),
-                                         base_vec[0] * np.sin(theta_) + base_vec[1] * np.cos(theta_)])
-            target_pt_i = target.state.p_pos + relative_target
-            target_pts[i] = target_pt_i
 
-        k1, k2 = 3.6, 1.2
-        k3, k4 = 0.25, 2.0
-        k_nb = 1.0
-        k_t = 0.5  # 与target的斥力
-        k_pt = 1.2  # 与其他target pt的斥力
-        q_th = 0.9  # 智能体之间的安全半径
-        q_th_T = 1.0  # 智能与目标之间的安全半径
-        q_th_pt = 0.4  # 智能体与其他期望点之间的安全半径
-        d_switch = 0.75
+        d_cap = 1.0
+        L = 2*d_cap*np.sin(np.pi/num_agents)
+        k_ic = 1.0
+        k_icv = 1.0
+        k_ij = 4.0
+        k_b = 1.0  # 速度阻尼
+        k_obs = 1
+        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta
+        Ls = L_min + np.sqrt(agents[0].max_speed**2/k_obs)
+        # print(Ls)
         for i, agent in enumerate(agents):
-            u_i = np.array([0, 0])
-            target_pt_i = target_pts[i]
-            # print('i:{},target_pt:{}'.format(i, target_pt_i))
-            dist_vec = agent.state.p_pos - target_pt_i
-            vel_vec = agent.state.p_vel - target.state.p_vel
-            # 与期望点之间的引力
-            if np.linalg.norm(dist_vec) < d_switch:
-                v_exp = -k1 * dist_vec - k2 * vel_vec
-                u_i = (v_exp - agent.state.p_vel) / self.world.dt
-            else:
-                u_i = -k3 * dist_vec - k4 * vel_vec
+            # 与目标之间的吸引力
+            r_ic = target.state.p_pos - agent.state.p_pos
+            norm_r_ic = np.linalg.norm(r_ic)
+            vel_vec = target.state.p_vel - agent.state.p_vel
+            f_c = k_ic*(norm_r_ic - d_cap)/norm_r_ic*r_ic + k_icv*vel_vec
 
-            # 与目标之间的斥力
-            vec_x = agent.state.p_pos - target.state.p_pos
-            vec_x_norm = np.linalg.norm(vec_x)
-            if vec_x_norm < q_th_T:
-                u_norm = k_t * (q_th_T - vec_x_norm) / (vec_x_norm ** 3) / (q_th_T)
-                u_ = u_norm * vec_x / vec_x_norm
-                u_i = u_i + u_
-
-            # 与邻居之间的斥力
+            # 与其他agt之间的斥力
+            f_r = np.array([0, 0])
             for adv in agents:
                 if adv is agent: continue
-                vec_x = agent.state.p_pos - adv.state.p_pos
-                vec_x_norm = np.linalg.norm(vec_x)
-                if vec_x_norm < q_th:
-                    # if np.dot(vec_x, target_pt_i - agent.state.p_pos) < 0:
-                    u_norm = k_nb * (q_th - vec_x_norm) / (vec_x_norm ** 3) / (q_th)
-                    u_ = u_norm * vec_x / vec_x_norm
-                    u_i = u_i + u_
-                    # else:
-                    #     pass
+                r_ij = agent.state.p_pos - adv.state.p_pos
+                norm_r_ij = np.linalg.norm(r_ij)
+                if norm_r_ij < L:
+                    f_r = f_r + k_ij*(L - norm_r_ij)/norm_r_ij*r_ij
+            # 把与目标方向相反的部分力给抵消了
+            if np.dot(f_r, r_ic) < 0:
+                f_r = f_r - np.dot(f_r, r_ic)/np.dot(r_ic, r_ic)*r_ic
 
-            # 与其他target point之间的斥力
-            for pt in target_pts:
-                if pt is target_pt_i: continue
-                vec_x = agent.state.p_pos - pt
-                vec_x_norm = np.linalg.norm(vec_x)
-                if vec_x_norm < q_th_pt:
-                    if np.dot(vec_x, target_pt_i - pt) < 0:
-                        u_norm = k_pt * (q_th_pt - vec_x_norm) / (vec_x_norm ** 3) / (q_th_pt)
-                        u_ = u_norm * vec_x / vec_x_norm
-                        u_i = u_i + u_
-                    else:
-                        pass
+            # 与目标之间的吸引力
+            r_ic = target.state.p_pos - agent.state.p_pos
+            norm_r_ic = np.linalg.norm(r_ic)
+            vel_vec = target.state.p_vel - agent.state.p_vel
+            f_c = k_ic*(norm_r_ic - d_cap)/norm_r_ic*r_ic + k_icv*vel_vec
+
+
+            # 与obs的斥力
+            f_obs = np.array([0, 0])
+            for landmark in landmarks:
+                d_ij = agent.state.p_pos - landmark.state.p_pos
+                norm_d_ij = np.linalg.norm(d_ij)
+                if norm_d_ij < Ls:
+                    print(11111)
+                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)/norm_d_ij*d_ij
+
+            u_i = f_c + f_r + f_obs - k_b*agent.state.p_vel
 
             u_i = limit_action_inf_norm(u_i, 1)
 
