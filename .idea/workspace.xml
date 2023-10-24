@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="36d2eb0a-1579-421f-b9c8-b4c69b6310ea" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/onpolicy/envs/mpe/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/onpolicy/envs/mpe/core.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/onpolicy/envs/mpe/environment.py" beforeDir="false" afterPath="$PROJECT_DIR$/onpolicy/envs/mpe/environment.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/onpolicy/envs/mpe/scenarios/simple_round_up2.py" beforeDir="false" afterPath="$PROJECT_DIR$/onpolicy/envs/mpe/scenarios/simple_round_up2.py" afterDir="false" />
     </list>
@@ -46,6 +45,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/onpolicy/envs/env_wrappers.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="environment" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SwarmRoundUp_V2_pure_policy_" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/onpolicy/envs/mpe" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/onpolicy/envs/mpe/environment.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -102,10 +123,12 @@
       <item itemvalue="Python.main" />
       <item itemvalue="Python.env_wrappers" />
       <item itemvalue="Python.render_mpe" />
+      <item itemvalue="Python.environment" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.render_mpe" />
+        <item itemvalue="Python.environment" />
         <item itemvalue="Python.env_wrappers" />
       </list>
     </recent_temporary>
@@ -125,7 +148,7 @@
       <workItem from="1697729600477" duration="185000" />
       <workItem from="1697729927019" duration="1142000" />
       <workItem from="1697778488904" duration="10812000" />
-      <workItem from="1698060435078" duration="7101000" />
+      <workItem from="1698060435078" duration="11657000" />
     </task>
     <servers />
   </component>
@@ -144,7 +167,8 @@
     </option>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/render_mpe_py$render_mpe.coverage" NAME="render_mpe Coverage Results" MODIFIED="1698069229725" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/onpolicy/scripts/render" />
+    <SUITE FILE_PATH="coverage/render_mpe_py$render_mpe.coverage" NAME="render_mpe Coverage Results" MODIFIED="1698114952165" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/onpolicy/scripts/render" />
+    <SUITE FILE_PATH="coverage/render_mpe_py$environment.coverage" NAME="environment Coverage Results" MODIFIED="1698070833646" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/onpolicy/envs/mpe" />
     <SUITE FILE_PATH="coverage/SwarmRoundUp_V2_pure_policy$render_mpe.coverage" NAME="render_mpe Coverage Results" MODIFIED="1697728675511" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/onpolicy/scripts/render" />
     <SUITE FILE_PATH="coverage/SwarmRoundUp_V2_pure_policy$env_wrappers.coverage" NAME="env_wrappers Coverage Results" MODIFIED="1697726777726" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/onpolicy/envs" />
   </component>

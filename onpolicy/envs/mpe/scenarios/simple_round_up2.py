@@ -11,7 +11,7 @@ class Scenario(BaseScenario):
         self.cp = 0.4
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
-        self.init_target_pos = 3.0
+        self.init_target_pos = 2.5
         self.use_CL = 0  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
@@ -42,7 +42,7 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.i = i
             landmark.name = 'landmark %d' % i
-            landmark.R = 0.25  # 需要设置成0.1~0.25随机
+            landmark.R = 0.2  # 需要设置成0.1~0.2随机
             landmark.delta = 0.15
             landmark.Ls = landmark.R + landmark.delta
 
@@ -92,10 +92,10 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                landmark.state.p_pos = np.array([-10.0, 1.5])
+                landmark.state.p_pos = np.array([-1.0, 1.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 1:
-                landmark.state.p_pos = np.array([10.0, 1.5])
+                landmark.state.p_pos = np.array([1.0, 1.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
