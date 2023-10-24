@@ -43,7 +43,7 @@ class Scenario(BaseScenario):
             landmark.i = i
             landmark.name = 'landmark %d' % i
             # landmark.R = 0.2  # 需要设置成0.1~0.2随机
-            landmark.R = np.random.uniform(0.1, 0.2, 1)
+            landmark.R = np.random.uniform(0.1, 0.25, 1)
             landmark.delta = 0.15
             landmark.Ls = landmark.R + landmark.delta
 
@@ -113,11 +113,11 @@ class Scenario(BaseScenario):
         else:
             return 0
 
-    def is_collision(self, agent1, agent2):
+    def no_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
         dist = np.sqrt(np.sum(np.square(delta_pos)))
-        dist_min = agent1.size + agent2.size
-        return True if dist < dist_min else False
+        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0
+        return True if dist > dist_min else False
 
     # return all agents that are not adversaries
     def good_agents(self, world):
@@ -126,6 +126,9 @@ class Scenario(BaseScenario):
     # return all adversarial agents
     def adversaries(self, world):
         return [agent for agent in world.agents if agent.adversary]
+
+    def landmarks(self, world):
+        return [landmark for landmark in world.landmarks]
 
     def set_CL(self, CL_ratio):
         d_cap = 1.5
@@ -154,6 +157,7 @@ class Scenario(BaseScenario):
         r_step = 0
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
+        landmarks = self.landmarks(world)
         N_adv = len(adversaries)
         dist_i_vec = target.state.p_pos - agent.state.p_pos
         dist_i = np.linalg.norm(dist_i_vec)  #与目标的距离
@@ -179,7 +183,7 @@ class Scenario(BaseScenario):
         #################################
         k1, k2, k3 = 0.2, 0.4, 2.0
         # w1, w2, w3 = 0.35, 0.4, 0.25
-        w1, w2, w3 = 0.35, 0.5, 0.15
+        w1, w2, w3 = 0.4, 0.6, 0.0
 
         # formaion reward r_f
         form_vec = np.array([0.0, 0.0])
@@ -190,9 +194,23 @@ class Scenario(BaseScenario):
         # distance coordination reward r_d
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
         # neighbor coordination reward r_l
-        r_l = 2/(1+np.exp(-k3*d_min))-2
+        # r_l = 2/(1+np.exp(-k3*d_min))-2
 
-        r_step = w1*r_f + w2*r_d + w3*r_l
+        r_l = 0
+        flag_collide = []
+        flag_collide.append(self.no_collision(agent, target))
+        for adv in adversaries:
+            if adv == agent: pass
+            else:
+                flag_collide.append(self.no_collision(agent, adv))
+        for landmark in landmarks:
+            flag_collide.append(self.no_collision(agent, landmark))
+        if all(flag_collide) == False:
+            print(flag_collide)
+            print('collide!!!!!!!')
+            r_l = -20
+
+        r_step = w1*r_f + w2*r_d + r_l
 
         ####### calculate dones ########
         dones = []
