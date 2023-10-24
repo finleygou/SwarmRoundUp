@@ -11,7 +11,7 @@ class Scenario(BaseScenario):
         self.cp = 0.4
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
-        self.init_target_pos = 2.5
+        self.init_target_pos = 2.0
         self.use_CL = 0  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
@@ -42,7 +42,8 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.i = i
             landmark.name = 'landmark %d' % i
-            landmark.R = 0.2  # 需要设置成0.1~0.2随机
+            # landmark.R = 0.2  # 需要设置成0.1~0.2随机
+            landmark.R = np.random.uniform(0.1, 0.2, 1)
             landmark.delta = 0.15
             landmark.Ls = landmark.R + landmark.delta
 
@@ -92,10 +93,14 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                landmark.state.p_pos = np.array([-1.0, 1.5])
+                rand_pos = np.random.uniform(0, 1, 2)
+                r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
+                landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 1:
-                landmark.state.p_pos = np.array([1.0, 1.5])
+                rand_pos = np.random.uniform(0, 1, 2)
+                r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
+                landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
@@ -402,7 +407,7 @@ def find_neighbors(agent, adversary, target):
         angle_ = Get_antiClockAngle(agent_vec, neighbor_vec)
         if np.isnan(angle_):
             # print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
-            if adv.i==0:
+            if adv.i == 0:
                 print("tp{:.3f} tv:{:.3f}".format(target.state.p_pos, target.state.p_vel))
                 print("0p{:.1f} 0v:{:.1f}".format(adversary[0].state.p_pos, adversary[0].state.p_vel))
                 print("1p{:.3f} 1v:{:.3f}".format(adversary[1].state.p_pos, adversary[1].state.p_vel))

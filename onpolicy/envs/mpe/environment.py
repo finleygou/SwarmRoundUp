@@ -348,15 +348,17 @@ class MultiAgentEnv(gym.Env):
 
         d_cap = 1.0
         L = 2*d_cap*np.sin(np.pi/num_agents)
-        k_ic = 1.0
+        k_ic = 2.0
         k_icv = 1.5
         k_ij = 5.0
         k_b = 1.5  # 速度阻尼
-        k_obs = 4
+        k_obs = 4.0
         d_switch = 0.75
-        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta
+        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta  # 0.6
         Ls = L_min + agents[0].max_speed
         # print(Ls)
+        k1, k2 = 1.2, 1.2
+        k3, k4 = 0.25, 2.0
         for i, agent in enumerate(agents):
             # 与目标之间的吸引力
             r_ic = target.state.p_pos - agent.state.p_pos
@@ -368,7 +370,27 @@ class MultiAgentEnv(gym.Env):
                 else:
                     f_c = k_ic*(norm_r_ic - d_cap)/norm_r_ic*r_ic + k_icv*vel_vec
             else:  # 不能穿过目标
-                f_c = 10 * k_ic * (norm_r_ic - d_cap) / norm_r_ic * r_ic + k_icv * vel_vec
+                f_c = 20 * k_ic * (norm_r_ic - d_cap) / norm_r_ic * r_ic + k_icv * vel_vec
+
+            # if abs(norm_r_ic - d_cap) < d_switch:
+            #     v_exp = k1 * r_ic + k2 * vel_vec
+            #     f_c = (v_exp - agent.state.p_vel) / self.world.dt
+            # else:
+            #     f_c = k3 * r_ic + k4 * vel_vec
+            # # f_c = k_ic * (norm_r_ic - d_cap) / norm_r_ic * r_ic + k_icv * vel_vec
+
+            # 势阱
+            # if abs(norm_r_ic - d_cap) < 0.1:
+            #     x_ = norm_r_ic
+            #     R_ = d_cap + 0.1
+            #     r_ = d_cap - 0.1
+            #     q_c = d_cap
+            #     # x_ = norm_r_ic - d_cap
+            #     if x_ > q_c:  # 外侧。引力。
+            #         f_p = (x_-q_c)**2/(R_-x_)**4/(R_-q_c)**2 * r_ic/norm_r_ic
+            #     else:  # 内侧
+            #         f_p = - (x_-q_c)**2/(x_-r_)**4/(q_c-r_)**2 * r_ic/norm_r_ic
+            #     f_c = f_c + f_p
 
             # 与其他agt之间的斥力
             f_r = np.array([0, 0])
@@ -377,11 +399,11 @@ class MultiAgentEnv(gym.Env):
                 r_ij = agent.state.p_pos - adv.state.p_pos
                 norm_r_ij = np.linalg.norm(r_ij)
                 if norm_r_ij < L:
-                    f_r = f_r + k_ij*(L - norm_r_ij)/norm_r_ij*r_ij
-                    # f_r = f_r + k_ij*(L - norm_r_ij)/(norm_r_ij ** 3)/L/norm_r_ij*r_ij
-            # 把与目标方向相反的部分力给抵消了
-            if np.dot(f_r, r_ic) < 0:
-                f_r = f_r - np.dot(f_r, r_ic)/np.dot(r_ic, r_ic)*r_ic
+                    f_ = k_ij*(L - norm_r_ij)/norm_r_ij*r_ij
+                    if np.dot(f_, r_ic) < 0 and norm_r_ij > L/2:  # 把与目标方向相反的部分力给抵消了
+                        f_ = f_ - np.dot(f_, r_ic) / np.dot(r_ic, r_ic) * r_ic
+                    f_r = f_r + f_
+
 
             # 与obs的斥力
             f_obs = np.array([0, 0])
@@ -389,7 +411,7 @@ class MultiAgentEnv(gym.Env):
                 d_ij = agent.state.p_pos - landmark.state.p_pos
                 norm_d_ij = np.linalg.norm(d_ij)
                 if norm_d_ij < Ls:
-                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)**2/norm_d_ij*d_ij
+                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)/norm_d_ij*d_ij
 
             u_i = f_c + f_r + f_obs - k_b*agent.state.p_vel
 
