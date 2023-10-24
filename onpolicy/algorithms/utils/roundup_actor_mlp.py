@@ -20,7 +20,7 @@ class A_MLPLayer(nn.Module):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain=gain)
         
         self.fc1 = nn.Sequential(
-            init_(nn.Linear(16, 128)), active_func, nn.LayerNorm(128))
+            init_(nn.Linear(24, 128)), active_func, nn.LayerNorm(128))
         
         self.fc2 = nn.Sequential(
             init_(nn.Linear(128, 64)), active_func, nn.LayerNorm(64))

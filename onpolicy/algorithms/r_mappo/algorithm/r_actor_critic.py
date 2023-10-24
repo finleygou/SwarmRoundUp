@@ -38,7 +38,7 @@ class R_Actor(nn.Module):
         # self.phi = PhiNetBase(args, 5)  # 5 is length of O_ij
 
         base = CNNBase if len(obs_shape) == 3 else A_MLPBase  # MLP
-        self.base = base(args, 16)  # 16 is obs_feature
+        self.base = base(args, 24)  # 16 is obs_feature
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             self.rnn = RNNLayer(64, 32, self._recurrent_N, self._use_orthogonal)

@@ -59,8 +59,8 @@ class Entity(object):
         self.initial_mass = 1.0
         # commu channel
         self.channel = None
-        self.R = None
-        self.delta = None
+        self.R = 0.
+        self.delta = 0.
 
     @property
     def mass(self):

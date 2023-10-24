@@ -43,7 +43,7 @@ class Scenario(BaseScenario):
             landmark.i = i
             landmark.name = 'landmark %d' % i
             # landmark.R = 0.2  # 需要设置成0.1~0.2随机
-            landmark.R = np.random.uniform(0.1, 0.25, 1)
+            landmark.R = np.random.uniform(0.1, 0.25, 1)[0]
             landmark.delta = 0.15
             landmark.Ls = landmark.R + landmark.delta
 
@@ -206,8 +206,8 @@ class Scenario(BaseScenario):
         for landmark in landmarks:
             flag_collide.append(self.no_collision(agent, landmark))
         if all(flag_collide) == False:
-            print(flag_collide)
-            print('collide!!!!!!!')
+            # print(flag_collide)
+            # print('collide!!!!!!!')
             r_l = -20
 
         r_step = w1*r_f + w2*r_d + r_l
@@ -245,6 +245,7 @@ class Scenario(BaseScenario):
 
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
+        landmarks = self.landmarks(world)
         dist_vec = agent.state.p_pos - target.state.p_pos  # x^r
         vel_vec = agent.state.p_vel - target.state.p_vel  # v^r
         e_r = dist_vec/np.linalg.norm(dist_vec)
@@ -276,8 +277,20 @@ class Scenario(BaseScenario):
         Q_rt_ij = GetAcuteAngle(-d_2rt_vec, agent.state.p_vel)
         Q_rt_ji = GetAcuteAngle(rt_nb.state.p_vel, d_2rt_vec)
         o_nb = [left_nb_angle, d_lf, Q_lf_ij, Q_lf_ji, v_r_lf, right_nb_angle, d_rt, Q_rt_ij, Q_rt_ji, v_r_rt]  # 1*10
+        # calculate o_obs
+        d_min = 100.0
+        for lmk in landmarks:
+            dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+            if dist_ < d_min:
+                d_min = dist_
+                nearest_lmk = lmk
+        relative_dist = nearest_lmk.state.p_pos - agent.state.p_pos
+        d_lft = np.linalg.norm(lf_nb.state.p_pos - lmk.state.p_pos)
+        d_rit = np.linalg.norm(rt_nb.state.p_pos - lmk.state.p_pos)
+        o_obs = [relative_dist[0], relative_dist[1], d_min, d_lft, d_rit, nearest_lmk.R,
+                 agent.state.p_vel[0], agent.state.p_vel[1]]
 
-        obs_concatenate = np.concatenate([o_loc] + [o_nb]) # concatenate要用两层括号
+        obs_concatenate = np.concatenate([o_loc] + [o_nb] + [o_obs]) # concatenate要用两层括号
         # print(obs_concatenate)
         return obs_concatenate  
 
