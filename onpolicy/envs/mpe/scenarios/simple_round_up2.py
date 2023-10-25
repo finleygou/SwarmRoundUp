@@ -1,5 +1,5 @@
 import numpy as np
-from onpolicy.envs.mpe.core import World, Agent
+from onpolicy.envs.mpe.core import World, Agent, Landmark
 from onpolicy.envs.mpe.scenario import BaseScenario
 from onpolicy import global_var as glv
 
@@ -8,20 +8,21 @@ class Scenario(BaseScenario):
     def __init__(self) -> None:
         super().__init__()
         self.cd = 1.0  # 取消Cd
-        self.cp = 0.4
+        self.cp = 0.8
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 2.0
         self.use_CL = 0  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
-    def make_world(self,args):
+    def make_world(self, args):
         world = World()
         world.collaborative = True
         # set any world properties first
-        num_good_agents = 1 # args.num_good_agents
-        num_adversaries = 5 # args.num_adversaries
+        num_good_agents = 1  # args.num_good_agents
+        num_adversaries = 5  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
+        num_landmarks = 2
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):  # i 从0到5
@@ -33,7 +34,18 @@ class Scenario(BaseScenario):
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
             agent.max_speed = 0.5 if agent.adversary else 0.15
-            agent.max_angular = 0.0 if agent.adversary else 0.0 
+            agent.max_angular = 0.0 if agent.adversary else 0.0
+            agent.R = 0.15  # 小车的半径
+            agent.delta = 0.1  # 安全半径
+
+        world.landmarks = [Landmark() for i in range(num_landmarks)]
+        for i, landmark in enumerate(world.landmarks):
+            landmark.i = i
+            landmark.name = 'landmark %d' % i
+            # landmark.R = 0.2  # 需要设置成0.1~0.2随机
+            # landmark.R = np.random.uniform(0.1, 0.25, 1)[0]
+            # landmark.delta = 0.15
+            # landmark.Ls = landmark.R + landmark.delta
 
         # make initial conditions
         self.reset_world(world)
@@ -43,7 +55,6 @@ class Scenario(BaseScenario):
         # properties and initial states for agents
         for i, agent in enumerate(world.agents):
             agent.color = np.array([0.45, 0.95, 0.45]) if not agent.adversary else np.array([0.95, 0.45, 0.45])
-            # agent.color -= np.array([0.3, 0.3, 0.3]) if agent.leader else np.array([0, 0, 0])
             if i == 0:
                 agent.state.p_pos = np.array([-1.6, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
@@ -79,6 +90,30 @@ class Scenario(BaseScenario):
                 # callback只调用函数名。escape_policy的出入参数应该与agent.action_callback()保持一致
                 # print('111111', agent.state.p_pos)
 
+        for i, landmark in enumerate(world.landmarks):
+            landmark.color = np.array([0.45, 0.45, 0.95])
+            if i == 0:
+                # rand_pos = np.random.uniform(0, 1, 2)
+                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
+                # landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
+                # landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.R = 0  # 0.25
+                landmark.delta = 0
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([-1.0, 1.2])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+
+            elif i == 1:
+                # rand_pos = np.random.uniform(0, 1, 2)
+                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
+                # landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
+                # landmark.state.p_vel = np.zeros(world.dim_p)
+                landmark.R = 0  # 0.16
+                landmark.delta = 0
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([1.1, 0.8])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+
     def benchmark_data(self, agent, world):
         if agent.adversary:
             collisions = 0
@@ -89,11 +124,11 @@ class Scenario(BaseScenario):
         else:
             return 0
 
-    def is_collision(self, agent1, agent2):
+    def no_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
         dist = np.sqrt(np.sum(np.square(delta_pos)))
-        dist_min = agent1.size + agent2.size
-        return True if dist < dist_min else False
+        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0
+        return True if dist > dist_min else False
 
     # return all agents that are not adversaries
     def good_agents(self, world):
@@ -103,13 +138,23 @@ class Scenario(BaseScenario):
     def adversaries(self, world):
         return [agent for agent in world.agents if agent.adversary]
 
-    def set_CL(self, CL_ratio):
-        d_cap = 1.5
-        if CL_ratio < self.cp:
+    def landmarks(self, world):
+        return [landmark for landmark in world.landmarks]
+
+    def set_CL(self, CL_ratio, landmarks):
+        if 0.5< CL_ratio < self.cp:
             # print('in here Cd')
-            self.d_cap = d_cap*(self.cd + (1-self.cd)*CL_ratio/self.cp)
+            landmarks[0].R = 0.25*(CL_ratio-0.5)/(self.cp-0.5)
+            landmarks[1].R = 0.16*(CL_ratio-0.5)/(self.cp-0.5)
+            landmarks[0].delta = 0.15*(CL_ratio-0.5)/(self.cp-0.5)
+            landmarks[1].delta = 0.15*(CL_ratio-0.5)/(self.cp-0.5)
+        elif CL_ratio > self.cp:
+            landmarks[0].R = 0.25
+            landmarks[1].R = 0.16
+            landmarks[0].delta = 0.15
+            landmarks[1].delta = 0.15
         else:
-            self.d_cap = d_cap
+            pass
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -123,13 +168,14 @@ class Scenario(BaseScenario):
     # individual adversary award
     def adversary_reward(self, agent, world):  # agent here is adversary
         if self.use_CL:
-            self.set_CL(glv.get_value('CL_ratio'))
+            self.set_CL(glv.get_value('CL_ratio'), self.landmarks(world))
         
         # print("dcap is {}".format(self.d_cap))
         # Agents are rewarded based on individual position advantage
         r_step = 0
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
+        landmarks = self.landmarks(world)
         N_adv = len(adversaries)
         dist_i_vec = target.state.p_pos - agent.state.p_pos
         dist_i = np.linalg.norm(dist_i_vec)  #与目标的距离
@@ -155,7 +201,7 @@ class Scenario(BaseScenario):
         #################################
         k1, k2, k3 = 0.2, 0.4, 2.0
         # w1, w2, w3 = 0.35, 0.4, 0.25
-        w1, w2, w3 = 0.35, 0.5, 0.15
+        w1, w2, w3 = 0.4, 0.6, 0.0
 
         # formaion reward r_f
         form_vec = np.array([0.0, 0.0])
@@ -166,9 +212,23 @@ class Scenario(BaseScenario):
         # distance coordination reward r_d
         r_d = np.exp(-k2*np.sum(np.square(d_list))) - 1 
         # neighbor coordination reward r_l
-        r_l = 2/(1+np.exp(-k3*d_min))-2
+        # r_l = 2/(1+np.exp(-k3*d_min))-2
 
-        r_step = w1*r_f + w2*r_d + w3*r_l
+        r_l = 0
+        flag_collide = []
+        flag_collide.append(self.no_collision(agent, target))
+        for adv in adversaries:
+            if adv == agent: pass
+            else:
+                flag_collide.append(self.no_collision(agent, adv))
+        for landmark in landmarks:
+            flag_collide.append(self.no_collision(agent, landmark))
+        if all(flag_collide) == False:
+            # print(flag_collide)
+            # print('collide!!!!!!!')
+            r_l = -1
+
+        r_step = w1*r_f + w2*r_d + r_l
 
         ####### calculate dones ########
         dones = []
@@ -199,10 +259,11 @@ class Scenario(BaseScenario):
     # observation for adversary agents
     def observation(self, agent, world):
         if self.use_CL:
-            self.set_CL(glv.get_value('CL_ratio'))
+            self.set_CL(glv.get_value('CL_ratio'), self.landmarks(world))
 
         target = self.good_agents(world)[0]  # moving target
         adversaries = self.adversaries(world)
+        landmarks = self.landmarks(world)
         dist_vec = agent.state.p_pos - target.state.p_pos  # x^r
         vel_vec = agent.state.p_vel - target.state.p_vel  # v^r
         e_r = dist_vec/np.linalg.norm(dist_vec)
@@ -234,8 +295,20 @@ class Scenario(BaseScenario):
         Q_rt_ij = GetAcuteAngle(-d_2rt_vec, agent.state.p_vel)
         Q_rt_ji = GetAcuteAngle(rt_nb.state.p_vel, d_2rt_vec)
         o_nb = [left_nb_angle, d_lf, Q_lf_ij, Q_lf_ji, v_r_lf, right_nb_angle, d_rt, Q_rt_ij, Q_rt_ji, v_r_rt]  # 1*10
+        # calculate o_obs
+        d_min = 100.0
+        for lmk in landmarks:
+            dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+            if dist_ < d_min:
+                d_min = dist_
+                nearest_lmk = lmk
+        relative_dist = nearest_lmk.state.p_pos - agent.state.p_pos
+        d_lft = np.linalg.norm(lf_nb.state.p_pos - lmk.state.p_pos)
+        d_rit = np.linalg.norm(rt_nb.state.p_pos - lmk.state.p_pos)
+        o_obs = [relative_dist[0], relative_dist[1], d_min, d_lft, d_rit, nearest_lmk.R,
+                 agent.state.p_vel[0], agent.state.p_vel[1]]
 
-        obs_concatenate = np.concatenate([o_loc] + [o_nb]) # concatenate要用两层括号
+        obs_concatenate = np.concatenate([o_loc] + [o_nb] + [o_obs]) # concatenate要用两层括号
         # print(obs_concatenate)
         return obs_concatenate  
 
@@ -383,7 +456,7 @@ def find_neighbors(agent, adversary, target):
         angle_ = Get_antiClockAngle(agent_vec, neighbor_vec)
         if np.isnan(angle_):
             # print("angle_list_error. agent_vec:{}, nb_vec:{}".format(agent_vec, neighbor_vec))
-            if adv.i==0:
+            if adv.i == 0:
                 print("tp{:.3f} tv:{:.3f}".format(target.state.p_pos, target.state.p_vel))
                 print("0p{:.1f} 0v:{:.1f}".format(adversary[0].state.p_pos, adversary[0].state.p_vel))
                 print("1p{:.3f} 1v:{:.3f}".format(adversary[1].state.p_pos, adversary[1].state.p_vel))

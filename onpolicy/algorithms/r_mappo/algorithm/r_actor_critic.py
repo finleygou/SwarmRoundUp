@@ -38,7 +38,7 @@ class R_Actor(nn.Module):
         # self.phi = PhiNetBase(args, 5)  # 5 is length of O_ij
 
         base = CNNBase if len(obs_shape) == 3 else A_MLPBase  # MLP
-        self.base = base(args, 16)  # 16 is obs_feature
+        self.base = base(args, 24)  # 24 is obs_feature
 
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             self.rnn = RNNLayer(64, 32, self._recurrent_N, self._use_orthogonal)
@@ -63,14 +63,14 @@ class R_Actor(nn.Module):
         """
         
         # to tensor
-        obs = check(obs).to(**self.tpdv)  # 1*16
+        obs = check(obs).to(**self.tpdv)  # 1*24
         rnn_states = check(rnn_states).to(**self.tpdv)
         masks = check(masks).to(**self.tpdv)
         if available_actions is not None:
             available_actions = check(available_actions).to(**self.tpdv)
 
         # MLP
-        actor_features = self.base(obs) # input: 1*16, output: 1*64, before rnn.
+        actor_features = self.base(obs) # input: 1*24, output: 1*64, before rnn.
         # print("shape of actor_features:{}, rnn_states:{}, masks:{}".format(actor_features.shape, rnn_states.shape, masks.shape))
 
         # RNN

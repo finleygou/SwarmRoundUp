@@ -59,6 +59,8 @@ class Entity(object):
         self.initial_mass = 1.0
         # commu channel
         self.channel = None
+        self.R = None
+        self.delta = None
 
     @property
     def mass(self):
@@ -68,7 +70,6 @@ class Entity(object):
 class Landmark(Entity):
     def __init__(self):
         super(Landmark, self).__init__()
-        self.R = None
         self.delta = None
         self.Ls = None
         self.movable = False

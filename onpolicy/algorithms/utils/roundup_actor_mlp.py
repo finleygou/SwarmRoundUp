@@ -4,7 +4,7 @@ import numpy as np
 from .util import init, get_clones
 
 """MLP modules.
-   input: 6+5+5 = 16 output: 1*64
+   input: 6+5+5+8 = 24 output: 1*64
 """
 
 class A_MLPLayer(nn.Module):
@@ -20,7 +20,7 @@ class A_MLPLayer(nn.Module):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain=gain)
         
         self.fc1 = nn.Sequential(
-            init_(nn.Linear(16, 128)), active_func, nn.LayerNorm(128))
+            init_(nn.Linear(24, 128)), active_func, nn.LayerNorm(128))
         
         self.fc2 = nn.Sequential(
             init_(nn.Linear(128, 64)), active_func, nn.LayerNorm(64))

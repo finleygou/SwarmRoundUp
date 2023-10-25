@@ -37,6 +37,7 @@ class MultiAgentEnv(gym.Env):
         self.world_length = self.world.world_length
         self.current_step = 0
         self.agents = self.world.policy_agents
+        self.landmarks = self.world.landmarks
         # set required vectorized gym env property
         self.n = len(world.policy_agents)
         # scenario callbacks
@@ -151,7 +152,7 @@ class MultiAgentEnv(gym.Env):
             self.is_ternimate = False
 
         # set action for each agent
-        policy_u = self.policy_u(self.agents, self.world.scripted_agents[0])
+        policy_u = self.policy_u(self.landmarks, self.agents, self.world.scripted_agents[0])
         for i, agent in enumerate(self.agents):  # adversaries only
             self._set_action(action_n[i], policy_u[i], agent, self.action_space[i])
         
@@ -277,6 +278,15 @@ class MultiAgentEnv(gym.Env):
                             acc = -agent.state.p_vel/target_v*agent.max_accel
                         network_output[0], network_output[1] = acc[0], acc[1]
 
+                    elif self.is_ternimate and self.use_policy:
+                        # agent 减速到 0
+                        target_v = np.linalg.norm(agent.state.p_vel)
+                        if target_v < 1e-3:
+                            acc = np.array([0,0])
+                        else:
+                            acc = -agent.state.p_vel/target_v*agent.max_accel
+                        network_output[0], network_output[1] = acc[0], acc[1]
+
                     # rescale to 0~1
                     # rescale = 0.5*(network_output+1)  # 0~1
                     # 认为输出是[r, theta]
@@ -332,82 +342,88 @@ class MultiAgentEnv(gym.Env):
         # make sure we used all elements of action
         assert len(action) == 0, 'some action not used'
 
-    def policy_u(self, agents, target):
-            num_agents = len(agents)
-            d_cap = 1.0
-            U = np.zeros((num_agents, 2, 1))
-            target_pts = [None] * num_agents
-            base_vec = d_cap*np.array([0,-1])
-            delta_theta = 2*np.pi/num_agents
-            for i in range(num_agents):
-                theta_ = (3+i)*delta_theta
-                relative_target = +np.array([base_vec[0]*np.cos(theta_)-base_vec[1]*np.sin(theta_), base_vec[0]*np.sin(theta_)+base_vec[1]*np.cos(theta_)])
-                target_pt_i = target.state.p_pos+relative_target
-                target_pts[i] = target_pt_i
+    def policy_u(self, landmarks, agents, target):
+        num_agents = len(agents)
+        U = np.zeros((num_agents, 2, 1))
 
-            k1, k2 = 3.6, 1.2
-            k3, k4 = 0.25, 2.0
-            k_nb = 1.0
-            k_t = 0.5  # 与target的斥力
-            k_pt = 1.2  # 与其他target pt的斥力
-            q_th = 0.9  # 智能体之间的安全半径
-            q_th_T = 1.0 # 智能与目标之间的安全半径
-            q_th_pt = 0.4 # 智能体与其他期望点之间的安全半径
-            d_switch = 0.75
-            for i, agent in enumerate(agents):
-                u_i = np.array([0,0])
-                target_pt_i = target_pts[i]
-                # print('i:{},target_pt:{}'.format(i, target_pt_i))
-                dist_vec = agent.state.p_pos - target_pt_i
-                vel_vec = agent.state.p_vel - target.state.p_vel
-                # 与期望点之间的引力
-                if np.linalg.norm(dist_vec) < d_switch:
-                    v_exp = -k1*dist_vec - k2*vel_vec
-                    u_i = (v_exp - agent.state.p_vel)/self.world.dt
+        d_cap = 1.0
+        L = 2*d_cap*np.sin(np.pi/num_agents)
+        k_ic = 2.0
+        k_icv = 1.5
+        k_ij = 4.5
+        k_b = 1.5  # 速度阻尼
+        k_obs = 4.0
+        d_switch = 0.75
+        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta  # 0.6
+        Ls = L_min + 0.4
+        # print(Ls)
+        k1, k2 = 1.2, 1.2
+        k3, k4 = 0.25, 2.0
+        for i, agent in enumerate(agents):
+            # 与目标之间的吸引力
+            r_ic = target.state.p_pos - agent.state.p_pos
+            norm_r_ic = np.linalg.norm(r_ic)
+            vel_vec = target.state.p_vel - agent.state.p_vel
+            if norm_r_ic - d_cap > 0:
+                if norm_r_ic - d_cap > 1.5:
+                    f_c = 1.5/norm_r_ic*r_ic + k_icv*vel_vec
                 else:
-                    u_i = -k3*dist_vec - k4*vel_vec
-                
-                # 与目标之间的斥力
-                vec_x = agent.state.p_pos - target.state.p_pos
-                vec_x_norm = np.linalg.norm(vec_x)
-                if vec_x_norm < q_th_T:
-                    u_norm = k_t*(q_th_T-vec_x_norm)/(vec_x_norm**3)/(q_th_T)
-                    u_ = u_norm*vec_x/vec_x_norm
-                    u_i = u_i + u_
-                
-                # 与邻居之间的斥力
-                for adv in agents:
-                    if adv is agent: continue
-                    vec_x = agent.state.p_pos - adv.state.p_pos
-                    vec_x_norm = np.linalg.norm(vec_x)
-                    if vec_x_norm < q_th:
-                        # if np.dot(vec_x, target_pt_i - agent.state.p_pos) < 0:
-                        u_norm = k_nb*(q_th-vec_x_norm)/(vec_x_norm**3)/(q_th)
-                        u_ = u_norm*vec_x/vec_x_norm
-                        u_i = u_i + u_
-                        # else:
-                        #     pass
-                
-                # 与其他target point之间的斥力
-                for pt in target_pts:
-                    if pt is target_pt_i: continue
-                    vec_x = agent.state.p_pos - pt
-                    vec_x_norm = np.linalg.norm(vec_x)
-                    if vec_x_norm < q_th_pt:
-                        if np.dot(vec_x, target_pt_i - pt) < 0:
-                            u_norm = k_pt*(q_th_pt-vec_x_norm)/(vec_x_norm**3)/(q_th_pt)
-                            u_ = u_norm*vec_x/vec_x_norm
-                            u_i = u_i + u_
-                        else:
-                            pass
+                    f_c = k_ic*(norm_r_ic - d_cap)/norm_r_ic*r_ic + k_icv*vel_vec
+            else:  # 不能穿过目标
+                f_c = 20 * k_ic * (norm_r_ic - d_cap) / norm_r_ic * r_ic + k_icv * vel_vec
 
-                u_i = limit_action_inf_norm(u_i, 1)
+            # if norm_r_ic - d_cap > 0.15:
+            #     if norm_r_ic - d_cap > 1.5:
+            #         f_c = 1.5/norm_r_ic*r_ic + k_icv*vel_vec
+            #     else:
+            #         f_c = k_ic*(norm_r_ic - d_cap)/norm_r_ic*r_ic + k_icv*vel_vec
+            # elif norm_r_ic - d_cap < -0.15:
+            #     f_c = 20 * k_ic * (norm_r_ic - d_cap) / norm_r_ic * r_ic + k_icv * vel_vec
+            # else:
+            #     f_c = -k_b*agent.state.p_vel
 
-                U[i] = u_i.reshape(2,1)
-            return U
+            # 势阱
+            # if abs(norm_r_ic - d_cap) < 0.1:
+            #     x_ = norm_r_ic
+            #     R_ = d_cap + 0.1
+            #     r_ = d_cap - 0.1
+            #     q_c = d_cap
+            #     # x_ = norm_r_ic - d_cap
+            #     if x_ > q_c:  # 外侧。引力。
+            #         f_p = 0.1 * (x_-q_c)**2/(R_-x_)**4/(R_-q_c)**2 * r_ic/norm_r_ic
+            #     else:  # 内侧
+            #         f_p = - 0.1 * (x_-q_c)**2/(x_-r_)**4/(q_c-r_)**2 * r_ic/norm_r_ic
+            #     f_c = f_c + f_p
+
+            # 与其他agt之间的斥力
+            f_r = np.array([0, 0])
+            for adv in agents:
+                if adv is agent: continue
+                r_ij = agent.state.p_pos - adv.state.p_pos
+                norm_r_ij = np.linalg.norm(r_ij)
+                if norm_r_ij < L:
+                    f_ = k_ij*(L - norm_r_ij)/norm_r_ij*r_ij
+                    if np.dot(f_, r_ic) < 0 and norm_r_ij > 2*L/3:  # 把与目标方向相反的部分力给抵消了
+                        f_ = f_ - np.dot(f_, r_ic) / np.dot(r_ic, r_ic) * r_ic
+                    f_r = f_r + f_
+
+            # 与obs的斥力
+            f_obs = np.array([0, 0])
+            for landmark in landmarks:
+                d_ij = agent.state.p_pos - landmark.state.p_pos
+                norm_d_ij = np.linalg.norm(d_ij)
+                if norm_d_ij < Ls:
+                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)**1.5/norm_d_ij*d_ij
+
+            u_i = f_c + f_r + f_obs - k_b*agent.state.p_vel
+
+            u_i = limit_action_inf_norm(u_i, 1)
+
+            U[i] = u_i.reshape(2, 1)
+        return U
 
     def _set_CL(self, CL_ratio):
-        # 通过多进程set value，与env_wraapper直接关联，不能改。
+        # 通过多进程set value，与env_wrapper直接关联，不能改。
         # 此处glv是这个进程中的！与mperunner中的并不共用。
         glv.set_value('CL_ratio', CL_ratio)
         self.CL_ratio = glv.get_value('CL_ratio')
@@ -461,7 +477,10 @@ class MultiAgentEnv(gym.Env):
 
             self.comm_geoms = []
             for entity in self.world.entities:
-                geom = rendering.make_circle(0.2) # entity.size, the radius of circle
+                # if 'agent' in entity.name:
+                radius = entity.R
+                geom = rendering.make_circle(radius)
+
                 xform = rendering.Transform()
 
                 entity_comm_geoms = []
