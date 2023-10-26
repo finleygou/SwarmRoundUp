@@ -17,6 +17,7 @@ class R_MAPPOPolicy:
     def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
         self.device = device
         self.lr = args.lr
+        self.lr_decay_ratio = args.decay_ratio
         self.critic_lr = args.critic_lr
         self.opti_eps = args.opti_eps
         self.weight_decay = args.weight_decay
@@ -42,8 +43,8 @@ class R_MAPPOPolicy:
         :param episode: (int) current training episode.
         :param episodes: (int) total number of training episodes.
         """
-        update_linear_schedule(self.actor_optimizer, episode, episodes, self.lr)
-        update_linear_schedule(self.critic_optimizer, episode, episodes, self.critic_lr)
+        update_linear_schedule(self.actor_optimizer, episode, episodes, self.lr, self.lr_decay_ratio)
+        update_linear_schedule(self.critic_optimizer, episode, episodes, self.critic_lr, self.lr_decay_ratio)
 
     def get_actions(self, cent_obs, obs, rnn_states_actor, rnn_states_critic, masks, available_actions=None,
                     deterministic=False):

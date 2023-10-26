@@ -19,6 +19,7 @@ class MPERunner(Runner):
     def run(self):
         if self.all_args.save_data:
             #csv
+            print('save training data')
             file = open('Rewards.csv', 'w', encoding='utf-8', newline="")
             writer = csv.writer(file)
             writer.writerow(['step', 'average', 'min', 'max', 'std'])

@@ -12,7 +12,7 @@ class Scenario(BaseScenario):
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 2.0
-        self.use_CL = 0  # 是否使用课程式训练(render时改为false)
+        self.use_CL = 1  # 是否使用课程式训练(render时改为false)
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self, args):
@@ -97,8 +97,8 @@ class Scenario(BaseScenario):
                 # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
                 # landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0  # 0.25
-                landmark.delta = 0
+                landmark.R = 0.0  # 0.25
+                landmark.delta = 0.0
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-1.0, 1.2])
                 landmark.state.p_vel = np.zeros(world.dim_p)
@@ -108,8 +108,8 @@ class Scenario(BaseScenario):
                 # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
                 # landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0  # 0.16
-                landmark.delta = 0
+                landmark.R = 0.0  # 0.16
+                landmark.delta = 0.0
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([1.1, 0.8])
                 landmark.state.p_vel = np.zeros(world.dim_p)
@@ -142,19 +142,23 @@ class Scenario(BaseScenario):
         return [landmark for landmark in world.landmarks]
 
     def set_CL(self, CL_ratio, landmarks):
-        if 0.5< CL_ratio < self.cp:
+        Start_CL = 0.6
+        if Start_CL< CL_ratio < self.cp:
             # print('in here Cd')
-            landmarks[0].R = 0.25*(CL_ratio-0.5)/(self.cp-0.5)
-            landmarks[1].R = 0.16*(CL_ratio-0.5)/(self.cp-0.5)
-            landmarks[0].delta = 0.15*(CL_ratio-0.5)/(self.cp-0.5)
-            landmarks[1].delta = 0.15*(CL_ratio-0.5)/(self.cp-0.5)
+            landmarks[0].R = 0.25*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[1].R = 0.16*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[0].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[1].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
         elif CL_ratio > self.cp:
             landmarks[0].R = 0.25
             landmarks[1].R = 0.16
             landmarks[0].delta = 0.15
             landmarks[1].delta = 0.15
         else:
-            pass
+            landmarks[0].R = 0.0
+            landmarks[1].R = 0.0
+            landmarks[0].delta = 0.0
+            landmarks[1].delta = 0.0
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):

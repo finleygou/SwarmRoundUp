@@ -14,7 +14,9 @@ clip_param=0.15
 max_grad_norm=10.0
 gamma=0.985
 hidden_size=32
-save_data=0
+decay_ratio=0.0
+use_linear_lr_decay=False
+save_data=True  # needs to be modified in config.py
 
 echo "env is ${env}, scenario is ${scenario}, algo is ${algo}, exp is ${exp}, max seed is ${seed_max}"
 for seed in `seq ${seed_max}`;
@@ -24,6 +26,6 @@ do
     --scenario_name ${scenario} --num_agents ${num_agents} --num_good_agents ${num_good_agents} --num_adversaries ${num_adversaries} --num_landmarks ${num_landmarks} --seed ${seed} \
     --n_training_threads 8 --n_rollout_threads 32 --num_mini_batch 32 --episode_length 200 --num_env_steps 7680000 \
     --use_Relu ${use_Relu} --layer_N ${layer_N} --clip_param ${clip_param} --max_grad_norm ${max_grad_norm} \
-    --gamma ${gamma} --hidden_size ${hidden_size} save_data=0\
+    --gamma ${gamma} --hidden_size ${hidden_size} --save_data ${save_data} --use_linear_lr_decay ${use_linear_lr_decay} --decay_ratio ${decay_ratio} \
     --ppo_epoch 15 --gain 0.01 --lr 2e-4 --critic_lr 2e-4 --wandb_name "xxx" --user_name "finleygou"
 done
