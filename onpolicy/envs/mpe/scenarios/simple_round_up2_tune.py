@@ -125,7 +125,7 @@ class Scenario(BaseScenario):
     def no_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
         dist = np.linalg.norm(delta_pos)
-        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0.15
+        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0.25
         return True if dist > dist_min else False
 
     # return all agents that are not adversaries
@@ -340,7 +340,7 @@ class Scenario(BaseScenario):
 def escape_policy(agent, adversaries):
     set_CL = 1
     Cp = 0.6
-    Cv = 0.4
+    Cv = 0.5
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate
