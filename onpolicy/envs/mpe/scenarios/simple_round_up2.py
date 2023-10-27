@@ -8,11 +8,16 @@ class Scenario(BaseScenario):
     def __init__(self) -> None:
         super().__init__()
         self.cd = 1.0  # 取消Cd
-        self.cp = 0.8
+        self.cp = 0.75
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 2.0
+
+        self.band_init = 0.2
+        self.band_target = 0.1
+        self.d_lft_band = self.band_init
         self.use_CL = 1  # 是否使用课程式训练(render时改为false)
+
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self, args):
@@ -97,8 +102,12 @@ class Scenario(BaseScenario):
                 # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
                 # landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0.0  # 0.25
-                landmark.delta = 0.0
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.25
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.25
+                    landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-1.0, 1.2])
                 landmark.state.p_vel = np.zeros(world.dim_p)
@@ -108,8 +117,12 @@ class Scenario(BaseScenario):
                 # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
                 # landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
                 # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0.0  # 0.16
-                landmark.delta = 0.0
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.25
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.16
+                    landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([1.1, 0.8])
                 landmark.state.p_vel = np.zeros(world.dim_p)
@@ -126,8 +139,8 @@ class Scenario(BaseScenario):
 
     def no_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
-        dist = np.sqrt(np.sum(np.square(delta_pos)))
-        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0
+        dist = np.linalg.norm(delta_pos)
+        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0.15
         return True if dist > dist_min else False
 
     # return all agents that are not adversaries
@@ -142,7 +155,7 @@ class Scenario(BaseScenario):
         return [landmark for landmark in world.landmarks]
 
     def set_CL(self, CL_ratio, landmarks):
-        Start_CL = 0.6
+        Start_CL = 0.45
         if Start_CL< CL_ratio < self.cp:
             # print('in here Cd')
             landmarks[0].R = 0.25*(CL_ratio-Start_CL)/(self.cp-Start_CL)
@@ -159,6 +172,8 @@ class Scenario(BaseScenario):
             landmarks[1].R = 0.0
             landmarks[0].delta = 0.0
             landmarks[1].delta = 0.0
+        
+        self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -230,7 +245,7 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -1
+            r_l = -3
 
         r_step = w1*r_f + w2*r_d + r_l
 
@@ -240,7 +255,7 @@ class Scenario(BaseScenario):
             di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
             _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
             # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
-            if di_adv<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+            if di_adv<self.d_lft_band and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
                 dones.append(True)
             else: dones.append(False)
         # print(dones)
@@ -250,12 +265,12 @@ class Scenario(BaseScenario):
             return 10+r_step
         else:  agent.done = False
 
-        left_nb_done = True if (abs(left_nb_angle - exp_alpha)<0.3 and abs(d_list[left_id])<0.2) else False
-        right_nb_done = True if (abs(right_nb_angle - exp_alpha)<0.3 and abs(d_list[right_id])<0.2) else False
+        left_nb_done = True if (abs(left_nb_angle - exp_alpha)<0.3 and abs(d_list[left_id])<self.d_lft_band) else False
+        right_nb_done = True if (abs(right_nb_angle - exp_alpha)<0.3 and abs(d_list[right_id])<self.d_lft_band) else False
 
-        if abs(d_i)<0.2 and left_nb_done and right_nb_done: # 30°
+        if abs(d_i)<self.d_lft_band and left_nb_done and right_nb_done: # 30°
             return 5+r_step # 5    # terminate reward
-        elif abs(d_i)<0.2 and (left_nb_done or right_nb_done): # 30°
+        elif abs(d_i)<self.d_lft_band and (left_nb_done or right_nb_done): # 30°
             return 2+r_step
         else:
             return r_step

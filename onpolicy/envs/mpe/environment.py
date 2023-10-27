@@ -29,6 +29,7 @@ class MultiAgentEnv(gym.Env):
         self.CL_ratio = 0
         self.Cp= 0.6 # 1.0 # 0.3
         self.JS_thre = 0
+        self.start_ratio = 0.80  # for JS thre
 
         # terminate
         self.is_ternimate = False
@@ -130,8 +131,7 @@ class MultiAgentEnv(gym.Env):
         info_n = []
         self.agents = self.world.policy_agents  # adversaries only
 
-        start_ratio = 0.80
-        self.JS_thre = int(self.world_length*start_ratio*set_JS_curriculum(self.CL_ratio/self.Cp))
+        self.JS_thre = int(self.world_length*self.start_ratio*set_JS_curriculum(self.CL_ratio/self.Cp))
         
         terminate = []
         for i, agent in enumerate(self.agents):
@@ -269,23 +269,24 @@ class MultiAgentEnv(gym.Env):
                     # 都是-1~1之间的[u0, u1]数组
                     network_output = action[0][0:self.world.dim_p]  # [ar, at] 1*2
 
-                    if self.is_ternimate and self.CL_ratio > self.Cp:
-                        # agent 减速到 0
-                        target_v = np.linalg.norm(agent.state.p_vel)
-                        if target_v < 1e-3:
-                            acc = np.array([0,0])
-                        else:
-                            acc = -agent.state.p_vel/target_v*agent.max_accel
-                        network_output[0], network_output[1] = acc[0], acc[1]
+                    if self.is_ternimate:
+                        if (self.use_CL and self.CL_ratio > self.Cp) or self.use_CL==False or self.use_policy:
+                            # agent 减速到 0
+                            target_v = np.linalg.norm(agent.state.p_vel)
+                            if target_v < 1e-3:
+                                acc = np.array([0,0])
+                            else:
+                                acc = -agent.state.p_vel/target_v*agent.max_accel
+                            network_output[0], network_output[1] = acc[0], acc[1]
 
-                    elif self.is_ternimate and self.use_policy:
-                        # agent 减速到 0
-                        target_v = np.linalg.norm(agent.state.p_vel)
-                        if target_v < 1e-3:
-                            acc = np.array([0,0])
-                        else:
-                            acc = -agent.state.p_vel/target_v*agent.max_accel
-                        network_output[0], network_output[1] = acc[0], acc[1]
+                    # elif self.is_ternimate and self.use_policy:
+                    #     # agent 减速到 0
+                    #     target_v = np.linalg.norm(agent.state.p_vel)
+                    #     if target_v < 1e-3:
+                    #         acc = np.array([0,0])
+                    #     else:
+                    #         acc = -agent.state.p_vel/target_v*agent.max_accel
+                    #     network_output[0], network_output[1] = acc[0], acc[1]
 
                     # rescale to 0~1
                     # rescale = 0.5*(network_output+1)  # 0~1
@@ -325,7 +326,9 @@ class MultiAgentEnv(gym.Env):
                             # agent.action.u = 0.6*policy_output + 0.4*network_output
                     elif self.use_policy:
                         agent.action.u = policy_output
-                    else: agent.action.u = network_output
+                    else: 
+                        act = network_output
+                        agent.action.u = limit_action_inf_norm(act, 1)
                     # network_output = action[0][0:self.world.dim_p]
                     # agent.action.u = network_output
                     d = self.world.dim_p
@@ -353,10 +356,6 @@ class MultiAgentEnv(gym.Env):
         k_ij = 4.5
         k_b = 1.5  # 速度阻尼
         k_obs = 4.0
-        d_switch = 0.75
-        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta  # 0.6
-        Ls = L_min + 0.4
-        # print(Ls)
         k1, k2 = 1.2, 1.2
         k3, k4 = 0.25, 2.0
         for i, agent in enumerate(agents):
@@ -412,8 +411,10 @@ class MultiAgentEnv(gym.Env):
             for landmark in landmarks:
                 d_ij = agent.state.p_pos - landmark.state.p_pos
                 norm_d_ij = np.linalg.norm(d_ij)
+                L_min = agents[0].R + agents[0].delta + landmark.R + landmark.delta
+                Ls = L_min+0.4
                 if norm_d_ij < Ls:
-                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)**1.5/norm_d_ij*d_ij
+                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)/norm_d_ij*d_ij
 
             u_i = f_c + f_r + f_obs - k_b*agent.state.p_vel
 
