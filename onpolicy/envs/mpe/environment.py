@@ -144,7 +144,7 @@ class MultiAgentEnv(gym.Env):
                 # print('terminate triggered')
                 pass
             elif self.use_policy:
-                # print('terminate triggered')
+                print('terminate triggered')
                 pass
             else:
                 pass
@@ -324,6 +324,8 @@ class MultiAgentEnv(gym.Env):
 
                             # agent.action.u = 0.6*policy_output + 0.4*network_output
                     elif self.use_policy:
+                        if self.current_step > 160:
+                            print(111111)
                         agent.action.u = policy_output
                     else: agent.action.u = network_output
                     # network_output = action[0][0:self.world.dim_p]
@@ -354,8 +356,9 @@ class MultiAgentEnv(gym.Env):
         k_b = 1.5  # 速度阻尼
         k_obs = 4.0
         d_switch = 0.75
-        L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta  # 0.6
-        Ls = L_min + agents[0].max_speed
+        # L_min = agents[0].R + agents[0].delta + landmarks[0].R + landmarks[0].delta  # 0.6
+        # L_min = (agents[0].R + landmarks[0].R)*0.2 # 0.6
+        # Ls = L_min + 0.4
         # print(Ls)
         k1, k2 = 1.2, 1.2
         k3, k4 = 0.25, 2.0
@@ -412,8 +415,10 @@ class MultiAgentEnv(gym.Env):
             for landmark in landmarks:
                 d_ij = agent.state.p_pos - landmark.state.p_pos
                 norm_d_ij = np.linalg.norm(d_ij)
+                L_min = agents[0].R + agents[0].delta + landmark.R + landmark.delta
+                Ls = L_min+0.4
                 if norm_d_ij < Ls:
-                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)**1.5/norm_d_ij*d_ij
+                    f_obs = f_obs + k_obs*(Ls-norm_d_ij)/norm_d_ij*d_ij
 
             u_i = f_c + f_r + f_obs - k_b*agent.state.p_vel
 
