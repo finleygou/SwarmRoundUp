@@ -27,7 +27,7 @@ class Scenario(BaseScenario):
         num_good_agents = 1  # args.num_good_agents
         num_adversaries = 5  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 2
+        num_landmarks = 4
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):  # i 从0到5
@@ -98,10 +98,6 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                # rand_pos = np.random.uniform(0, 1, 2)
-                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
-                # landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
-                # landmark.state.p_vel = np.zeros(world.dim_p)
                 if self.use_CL:
                     landmark.R = 0.0  # 0.25
                     landmark.delta = 0.0
@@ -111,20 +107,35 @@ class Scenario(BaseScenario):
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-1.0, 1.2])
                 landmark.state.p_vel = np.zeros(world.dim_p)
-
             elif i == 1:
-                # rand_pos = np.random.uniform(0, 1, 2)
-                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
-                # landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
-                # landmark.state.p_vel = np.zeros(world.dim_p)
                 if self.use_CL:
                     landmark.R = 0.0  # 0.25
                     landmark.delta = 0.0
                 else:
-                    landmark.R = 0.16
+                    landmark.R = 0.18
                     landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([1.1, 0.8])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 2:
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.25
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.15
+                    landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([-0.5, 2.4])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 3:
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.25
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.20
+                    landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([0.8, 2.0])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
@@ -140,7 +151,7 @@ class Scenario(BaseScenario):
     def no_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos
         dist = np.linalg.norm(delta_pos)
-        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0.15
+        dist_min = agent1.R + agent2.R + (agent1.delta + agent2.delta)*0.25
         return True if dist > dist_min else False
 
     # return all agents that are not adversaries
@@ -159,20 +170,32 @@ class Scenario(BaseScenario):
         if Start_CL< CL_ratio < self.cp:
             # print('in here Cd')
             landmarks[0].R = 0.25*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[1].R = 0.16*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[1].R = 0.18*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[2].R = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[3].R = 0.20*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[0].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[1].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[2].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[3].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
         elif CL_ratio > self.cp:
             landmarks[0].R = 0.25
-            landmarks[1].R = 0.16
+            landmarks[1].R = 0.18
+            landmarks[2].R = 0.15
+            landmarks[3].R = 0.20
             landmarks[0].delta = 0.15
             landmarks[1].delta = 0.15
+            landmarks[2].delta = 0.15
+            landmarks[3].delta = 0.15
         else:
             landmarks[0].R = 0.0
             landmarks[1].R = 0.0
+            landmarks[2].R = 0.0
+            landmarks[3].R = 0.0
             landmarks[0].delta = 0.0
             landmarks[1].delta = 0.0
-        
+            landmarks[2].delta = 0.0
+            landmarks[3].delta = 0.0
+
         self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
     
     # agent 和 adversary 分别的reward
