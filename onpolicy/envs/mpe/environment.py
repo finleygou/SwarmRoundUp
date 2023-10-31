@@ -416,7 +416,7 @@ class MultiAgentEnv(gym.Env):
                 d_ij = agent.state.p_pos - landmark.state.p_pos
                 norm_d_ij = np.linalg.norm(d_ij)
                 L_min = agents[0].R + agents[0].delta + landmark.R + landmark.delta
-                Ls = L_min+0.4
+                Ls = L_min+0.3
                 if norm_d_ij < Ls:
                     f_obs = f_obs + k_obs*(Ls-norm_d_ij)/norm_d_ij*d_ij
 

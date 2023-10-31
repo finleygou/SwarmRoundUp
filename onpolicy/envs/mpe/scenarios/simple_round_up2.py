@@ -22,7 +22,7 @@ class Scenario(BaseScenario):
         num_good_agents = 1  # args.num_good_agents
         num_adversaries = 5  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 2
+        num_landmarks = 4
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):  # i 从0到5
@@ -44,7 +44,7 @@ class Scenario(BaseScenario):
             landmark.name = 'landmark %d' % i
             # landmark.R = 0.2  # 需要设置成0.1~0.2随机
             # landmark.R = np.random.uniform(0.1, 0.25, 1)[0]
-            landmark.delta = 0.15  # 0.15
+            landmark.delta = 0.0  # 0.15
             # landmark.Ls = landmark.R + landmark.delta
 
         # make initial conditions
@@ -93,23 +93,24 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                # rand_pos = np.random.uniform(0, 1, 2)
-                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
-                # landmark.state.p_pos = np.array([-1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
-                # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0.25
+                landmark.R = 0#0.25
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-1.0, 1.2])
                 landmark.state.p_vel = np.zeros(world.dim_p)
-
             elif i == 1:
-                # rand_pos = np.random.uniform(0, 1, 2)
-                # r_, theta_ = 0.25 * rand_pos[0], np.pi * 2 * rand_pos[1]
-                # landmark.state.p_pos = np.array([1.0 + r_*np.cos(theta_), 1.2 + r_*np.sin(theta_)])
-                # landmark.state.p_vel = np.zeros(world.dim_p)
-                landmark.R = 0.16
+                landmark.R = 0#0.18
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([1.1, 0.8])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 2:
+                landmark.R = 0#0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([-0.5, 2.4])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 3:
+                landmark.R = 0#0.2
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([0.8, 2.0])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
