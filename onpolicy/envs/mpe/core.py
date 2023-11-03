@@ -59,8 +59,8 @@ class Entity(object):
         self.initial_mass = 1.0
         # commu channel
         self.channel = None
-        self.R = None
-        self.delta = None
+        self.R = 0.
+        self.delta = 0.
 
     @property
     def mass(self):
@@ -212,7 +212,7 @@ class World(object):
         self.world_step += 1
         # set actions for scripted agents
         for agent in self.scripted_agents:
-            agent.action = agent.action_callback(agent, self.policy_agents)
+            agent.action = agent.action_callback(agent, self.policy_agents, self.landmarks)
         
         # gather forces applied to entities
         u = [None] * len(self.entities)  # 空数组

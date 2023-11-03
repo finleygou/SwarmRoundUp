@@ -11,9 +11,9 @@ class Scenario(BaseScenario):
         self.cp = 0.75
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
-        self.init_target_pos = 2.0
+        self.init_target_pos = 1.5
 
-        self.band_init = 0.2
+        self.band_init = 0.25
         self.band_target = 0.1
         self.d_lft_band = self.band_init
         self.use_CL = 1  # 是否使用课程式训练(render时改为false)
@@ -27,7 +27,7 @@ class Scenario(BaseScenario):
         num_good_agents = 1  # args.num_good_agents
         num_adversaries = 5  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 4
+        num_landmarks = 6
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):  # i 从0到5
@@ -109,7 +109,7 @@ class Scenario(BaseScenario):
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 1:
                 if self.use_CL:
-                    landmark.R = 0.0  # 0.25
+                    landmark.R = 0.0  # 0.18
                     landmark.delta = 0.0
                 else:
                     landmark.R = 0.18
@@ -119,7 +119,7 @@ class Scenario(BaseScenario):
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 2:
                 if self.use_CL:
-                    landmark.R = 0.0  # 0.25
+                    landmark.R = 0.0  # 0.15
                     landmark.delta = 0.0
                 else:
                     landmark.R = 0.15
@@ -129,13 +129,33 @@ class Scenario(BaseScenario):
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 3:
                 if self.use_CL:
-                    landmark.R = 0.0  # 0.25
+                    landmark.R = 0.0  # 0.20
                     landmark.delta = 0.0
                 else:
                     landmark.R = 0.20
                     landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([0.8, 2.0])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 4:
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.14
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.14
+                    landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([-0.7, 3.5])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 5:
+                if self.use_CL:
+                    landmark.R = 0.0  # 0.16
+                    landmark.delta = 0.0
+                else:
+                    landmark.R = 0.16
+                    landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([0.6, 3.6])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
@@ -173,28 +193,40 @@ class Scenario(BaseScenario):
             landmarks[1].R = 0.18*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[2].R = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[3].R = 0.20*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[4].R = 0.14*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[5].R = 0.16*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[0].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[1].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[2].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
             landmarks[3].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[4].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
+            landmarks[5].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
         elif CL_ratio > self.cp:
             landmarks[0].R = 0.25
             landmarks[1].R = 0.18
             landmarks[2].R = 0.15
             landmarks[3].R = 0.20
+            landmarks[2].R = 0.14
+            landmarks[3].R = 0.16
             landmarks[0].delta = 0.15
             landmarks[1].delta = 0.15
             landmarks[2].delta = 0.15
             landmarks[3].delta = 0.15
+            landmarks[4].delta = 0.15
+            landmarks[5].delta = 0.15
         else:
             landmarks[0].R = 0.0
             landmarks[1].R = 0.0
             landmarks[2].R = 0.0
             landmarks[3].R = 0.0
+            landmarks[4].R = 0.0
+            landmarks[5].R = 0.0
             landmarks[0].delta = 0.0
             landmarks[1].delta = 0.0
             landmarks[2].delta = 0.0
             landmarks[3].delta = 0.0
+            landmarks[4].delta = 0.0
+            landmarks[5].delta = 0.0
 
         self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
     
@@ -375,7 +407,7 @@ class Scenario(BaseScenario):
             return False
             
 # # 逃逸目标的策略
-def escape_policy(agent, adversaries):
+def escape_policy(agent, adversaries, landmarks):
     set_CL = 0
     Cp = 0.4
     Cv = 0.2
@@ -407,8 +439,24 @@ def escape_policy(agent, adversaries):
         esp_direction = np.array([0, 0])
         for adv in adversaries:
             d_vec_ij = agent.state.p_pos - adv.state.p_pos
-            d_vec_ij = d_vec_ij / (np.linalg.norm(d_vec_ij))**3
+            d_vec_ij = d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij)-adv.R-agent.R)**2
             esp_direction = esp_direction + d_vec_ij
+
+        d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
+        for lmk in landmarks:
+            dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+            if dist_ < d_min:
+                d_min = dist_
+                nearest_lmk = lmk
+        if d_min < 1.0:
+            d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
+            d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+            if np.dot(d_vec_ij, esp_direction) < 0:
+                d_vec_ij = d_vec_ij - np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
+        else:
+            d_vec_ij = np.array([0, 0])
+        esp_direction = esp_direction + d_vec_ij
+
         esp_direction = esp_direction/np.linalg.norm(esp_direction)
         a_x, a_y = esp_direction[0]*agent.max_accel, esp_direction[1]*agent.max_accel
         v_x = agent.state.p_vel[0] + a_x*dt

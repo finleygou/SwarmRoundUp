@@ -13,7 +13,7 @@ class Scenario(BaseScenario):
         self.cp = 0.6
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
-        self.init_target_pos = 2.0
+        self.init_target_pos = 1.5
 
         self.band_init = 0.2
         self.band_target = 0.1
@@ -29,7 +29,7 @@ class Scenario(BaseScenario):
         num_good_agents = 1  # args.num_good_agents
         num_adversaries = 5  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 4
+        num_landmarks = 6
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):  # i 从0到5
@@ -40,7 +40,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.3
+            agent.max_speed = 0.5 if agent.adversary else 0.25
             agent.max_angular = 0.0 if agent.adversary else 0.0
             agent.R = 0.15  # 小车的半径
             agent.delta = 0.1  # 安全半径
@@ -123,6 +123,18 @@ class Scenario(BaseScenario):
                 landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([0.8, 2.0])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 4:
+                landmark.R = 0.14
+                landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([-0.9, 3.5])
+                landmark.state.p_vel = np.zeros(world.dim_p)
+            elif i == 5:
+                landmark.R = 0.16
+                landmark.delta = 0.15
+                landmark.Ls = landmark.R + landmark.delta
+                landmark.state.p_pos = np.array([0.6, 3.6])
                 landmark.state.p_vel = np.zeros(world.dim_p)
 
     def benchmark_data(self, agent, world):
@@ -243,7 +255,7 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -10
+            r_l = -15
 
         r_step = w1*r_f + w2*r_d + r_l
 
@@ -350,10 +362,10 @@ class Scenario(BaseScenario):
             return False
             
 # # 逃逸目标的策略
-def escape_policy(agent, adversaries):
+def escape_policy(agent, adversaries, landmarks):
     set_CL = 1
     Cp = 0.6
-    Cv = 0.5
+    Cv = 0.6
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate
@@ -382,8 +394,24 @@ def escape_policy(agent, adversaries):
         esp_direction = np.array([0, 0])
         for adv in adversaries:
             d_vec_ij = agent.state.p_pos - adv.state.p_pos
-            d_vec_ij = d_vec_ij / (np.linalg.norm(d_vec_ij))**3
+            d_vec_ij = d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij)-adv.R-agent.R)**2
             esp_direction = esp_direction + d_vec_ij
+
+        d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
+        for lmk in landmarks:
+            dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+            if dist_ < d_min:
+                d_min = dist_
+                nearest_lmk = lmk
+        if d_min < 1.0:
+            d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
+            d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+            if np.dot(d_vec_ij, esp_direction) < 0:
+                d_vec_ij = d_vec_ij - np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
+        else:
+            d_vec_ij = np.array([0, 0])
+        esp_direction = esp_direction + d_vec_ij
+
         esp_direction = esp_direction/np.linalg.norm(esp_direction)
         a_x, a_y = esp_direction[0]*agent.max_accel, esp_direction[1]*agent.max_accel
         v_x = agent.state.p_vel[0] + a_x*dt
