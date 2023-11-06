@@ -26,7 +26,7 @@ class C_MLPLayer(nn.Module):
         #     init_(nn.Linear(5, 64)), active_func, nn.LayerNorm(64))  # 输入5， 输出64
         
         self.fc1 = nn.Sequential(
-            init_(nn.Linear(120, 256)), active_func, nn.LayerNorm(256))
+            init_(nn.Linear(input_dim, 256)), active_func, nn.LayerNorm(256))
         
         self.fc2 = nn.Sequential(
             init_(nn.Linear(256, 128)), active_func, nn.LayerNorm(128))
