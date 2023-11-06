@@ -255,17 +255,17 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -15
+            r_l = -50
 
         r_step = w1*r_f + w2*r_d + r_l
 
         ####### calculate dones ########
         dones = []
         for adv in adversaries:
-            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
+            di_adv_lft = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
             _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
             # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
-            if di_adv<self.d_lft_band and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+            if abs(di_adv_lft)<self.d_lft_band and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
                 dones.append(True)
             else: dones.append(False)
         # print(dones)

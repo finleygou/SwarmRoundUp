@@ -1,7 +1,7 @@
 #!/bin/sh
 env="MPE"
 scenario="simple_round_up2"
-num_landmarks=0
+num_landmarks=6
 num_good_agents=1
 num_adversaries=5 # policy agents
 num_agents=5 # also only consider policy agents

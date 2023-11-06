@@ -569,6 +569,7 @@ class MultiAgentEnv(gym.Env):
                 data_ = data_ + (j, self.world.agents[j].state.p_pos[0], self.world.agents[j].state.p_pos[1], \
                                  self.world.agents[j].state.p_vel[0], self.world.agents[j].state.p_vel[1], \
                                     self.world.agents[j].state.phi)
+            data_ = data_ + (int(self.is_ternimate),)
             INFO.append(data_)
             #csv
             

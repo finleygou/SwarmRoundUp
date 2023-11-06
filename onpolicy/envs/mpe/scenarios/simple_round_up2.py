@@ -15,7 +15,8 @@ class Scenario(BaseScenario):
 
         self.band_init = 0.25
         self.band_target = 0.1
-        self.d_lft_band = self.band_init
+        self.d_lft_band = self.band_target  # 不用课程式学习时应该是target
+        self.dleft_lb = self.d_cap - self.d_lft_band  # 与目标距离的下界
         self.use_CL = 1  # 是否使用课程式训练(render时改为false)
 
 
@@ -145,7 +146,7 @@ class Scenario(BaseScenario):
                     landmark.R = 0.14
                     landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
-                landmark.state.p_pos = np.array([-0.7, 3.5])
+                landmark.state.p_pos = np.array([-0.9, 3.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 5:
                 if self.use_CL:
@@ -228,7 +229,12 @@ class Scenario(BaseScenario):
             landmarks[4].delta = 0.0
             landmarks[5].delta = 0.0
 
-        self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
+        if CL_ratio < self.cp:
+            self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
+            self.dleft_lb = (self.d_cap - self.d_lft_band)*CL_ratio/self.cp
+        else:
+            self.d_lft_band = self.band_target
+            self.dleft_lb = self.d_cap - self.band_target
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -307,10 +313,12 @@ class Scenario(BaseScenario):
         ####### calculate dones ########
         dones = []
         for adv in adversaries:
-            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
+            
+            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) 
+            di_adv_lft = di_adv - self.d_cap
             _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
-            # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
-            if di_adv<self.d_lft_band and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+            # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv_lft), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
+            if di_adv_lft<self.d_lft_band and di_adv>self.dleft_lb and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
                 dones.append(True)
             else: dones.append(False)
         # print(dones)
