@@ -3,20 +3,20 @@ from onpolicy.envs.mpe.core import World, Agent, Landmark
 from onpolicy.envs.mpe.scenario import BaseScenario
 from onpolicy import global_var as glv
 
-############### 5agt base ###############
+############### 6agt tune ###############
 class Scenario(BaseScenario):
     
     def __init__(self) -> None:
         super().__init__()
         self.cd = 1.0  # 取消Cd
-        self.cp = 0.75
+        self.cp = 0.6
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 1.5
 
         self.band_init = 0.25
         self.band_target = 0.1
-        self.angle_band_init = 0.3
+        self.angle_band_init = 0.4
         self.angle_band_target = 0.3
         self.delta_angle_band = self.angle_band_target
         self.d_lft_band = self.band_target  # 不用课程式学习时应该是target
@@ -30,7 +30,7 @@ class Scenario(BaseScenario):
         world.collaborative = True
         # set any world properties first
         num_good_agents = 1  # args.num_good_agents
-        num_adversaries = 5  # args.num_adversaries
+        num_adversaries = 6  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
         num_landmarks = 6
         # add agents
@@ -43,7 +43,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.15
+            agent.max_speed = 0.5 if agent.adversary else 0.25
             agent.max_angular = 0.0 if agent.adversary else 0.0
             agent.R = 0.15  # 小车的半径
             agent.delta = 0.1  # 安全半径
@@ -66,26 +66,30 @@ class Scenario(BaseScenario):
         for i, agent in enumerate(world.agents):
             agent.color = np.array([0.45, 0.95, 0.45]) if not agent.adversary else np.array([0.95, 0.45, 0.45])
             if i == 0:
-                agent.state.p_pos = np.array([-1.6, 0.0])
+                agent.state.p_pos = np.array([-2.0, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
             elif i == 1:
-                agent.state.p_pos = np.array([-0.8, 0.0])
+                agent.state.p_pos = np.array([-1.2, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
             elif i == 2:
-                agent.state.p_pos = np.array([0.0, 0.0])
+                agent.state.p_pos = np.array([-0.4, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
             elif i == 3:
-                agent.state.p_pos = np.array([0.8, 0.0])
+                agent.state.p_pos = np.array([0.4, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
             elif i == 4:
-                agent.state.p_pos = np.array([1.6, 0.0])
+                agent.state.p_pos = np.array([1.2, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
             elif i == 5:
+                agent.state.p_pos = np.array([2.0, 0.0])
+                agent.state.p_vel = np.zeros(world.dim_p)
+                agent.state.phi = np.pi/2
+            elif i == 6:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
                 r_, theta_ = 0.3*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
                 if self.use_CL:
@@ -103,62 +107,38 @@ class Scenario(BaseScenario):
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.45, 0.45, 0.95])
             if i == 0:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.25
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.25
-                    landmark.delta = 0.15
+                landmark.R = 0.25
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-1.0, 1.2])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 1:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.18
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.18
-                    landmark.delta = 0.15
+                landmark.R = 0.18
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([1.1, 0.8])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 2:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.15
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.15
-                    landmark.delta = 0.15
+                landmark.R = 0.15
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-0.5, 2.4])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 3:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.20
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.20
-                    landmark.delta = 0.15
+                landmark.R = 0.20
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([0.8, 2.0])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 4:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.14
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.14
-                    landmark.delta = 0.15
+                landmark.R = 0.14
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([-0.9, 3.5])
                 landmark.state.p_vel = np.zeros(world.dim_p)
             elif i == 5:
-                if self.use_CL:
-                    landmark.R = 0.0  # 0.16
-                    landmark.delta = 0.0
-                else:
-                    landmark.R = 0.16
-                    landmark.delta = 0.15
+                landmark.R = 0.16
+                landmark.delta = 0.15
                 landmark.Ls = landmark.R + landmark.delta
                 landmark.state.p_pos = np.array([0.6, 3.6])
                 landmark.state.p_vel = np.zeros(world.dim_p)
@@ -191,56 +171,7 @@ class Scenario(BaseScenario):
         return [landmark for landmark in world.landmarks]
 
     def set_CL(self, CL_ratio, landmarks):
-        Start_CL = 0.45
-        if Start_CL< CL_ratio < self.cp:
-            # print('in here Cd')
-            landmarks[0].R = 0.25*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[1].R = 0.18*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[2].R = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[3].R = 0.20*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[4].R = 0.14*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[5].R = 0.16*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[0].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[1].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[2].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[3].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[4].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-            landmarks[5].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-        elif CL_ratio > self.cp:
-            landmarks[0].R = 0.25
-            landmarks[1].R = 0.18
-            landmarks[2].R = 0.15
-            landmarks[3].R = 0.20
-            landmarks[2].R = 0.14
-            landmarks[3].R = 0.16
-            landmarks[0].delta = 0.15
-            landmarks[1].delta = 0.15
-            landmarks[2].delta = 0.15
-            landmarks[3].delta = 0.15
-            landmarks[4].delta = 0.15
-            landmarks[5].delta = 0.15
-        else:
-            landmarks[0].R = 0.0
-            landmarks[1].R = 0.0
-            landmarks[2].R = 0.0
-            landmarks[3].R = 0.0
-            landmarks[4].R = 0.0
-            landmarks[5].R = 0.0
-            landmarks[0].delta = 0.0
-            landmarks[1].delta = 0.0
-            landmarks[2].delta = 0.0
-            landmarks[3].delta = 0.0
-            landmarks[4].delta = 0.0
-            landmarks[5].delta = 0.0
-
-        if CL_ratio < self.cp:
-            self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
-            self.delta_angle_band = self.angle_band_init - (self.angle_band_init - self.angle_band_target)*CL_ratio/self.cp
-            self.dleft_lb = (self.d_cap - self.d_lft_band)*CL_ratio/self.cp
-        else:
-            self.d_lft_band = self.band_target
-            self.delta_angle_band = self.angle_band_target
-            self.dleft_lb = self.d_cap - self.band_target
+        pass
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -312,7 +243,7 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -3
+            r_l = -50
 
         r_step = w1*r_f + w2*r_d + r_l
 
@@ -422,9 +353,9 @@ class Scenario(BaseScenario):
             
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries, landmarks):
-    set_CL = 0
-    Cp = 0.4
-    Cv = 0.2
+    set_CL = 1
+    Cp = 0.6
+    Cv = 0.6
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate

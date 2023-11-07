@@ -3,7 +3,7 @@ from onpolicy.envs.mpe.core import World, Agent, Landmark
 from onpolicy.envs.mpe.scenario import BaseScenario
 from onpolicy import global_var as glv
 
-############### 5agt base ###############
+############### 3agt base ###############
 class Scenario(BaseScenario):
     
     def __init__(self) -> None:
@@ -16,7 +16,7 @@ class Scenario(BaseScenario):
 
         self.band_init = 0.25
         self.band_target = 0.1
-        self.angle_band_init = 0.3
+        self.angle_band_init = 0.6
         self.angle_band_target = 0.3
         self.delta_angle_band = self.angle_band_target
         self.d_lft_band = self.band_target  # 不用课程式学习时应该是target
@@ -30,7 +30,7 @@ class Scenario(BaseScenario):
         world.collaborative = True
         # set any world properties first
         num_good_agents = 1  # args.num_good_agents
-        num_adversaries = 5  # args.num_adversaries
+        num_adversaries = 3  # args.num_adversaries
         num_agents = num_adversaries + num_good_agents
         num_landmarks = 6
         # add agents
@@ -66,26 +66,18 @@ class Scenario(BaseScenario):
         for i, agent in enumerate(world.agents):
             agent.color = np.array([0.45, 0.95, 0.45]) if not agent.adversary else np.array([0.95, 0.45, 0.45])
             if i == 0:
-                agent.state.p_pos = np.array([-1.6, 0.0])
-                agent.state.p_vel = np.zeros(world.dim_p)
-                agent.state.phi = np.pi/2
-            elif i == 1:
                 agent.state.p_pos = np.array([-0.8, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
-            elif i == 2:
+            elif i == 1:
                 agent.state.p_pos = np.array([0.0, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
-            elif i == 3:
+            elif i == 2:
                 agent.state.p_pos = np.array([0.8, 0.0])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.state.phi = np.pi/2
-            elif i == 4:
-                agent.state.p_pos = np.array([1.6, 0.0])
-                agent.state.p_vel = np.zeros(world.dim_p)
-                agent.state.phi = np.pi/2
-            elif i == 5:
+            elif i == 3:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
                 r_, theta_ = 0.3*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
                 if self.use_CL:
