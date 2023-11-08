@@ -43,7 +43,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.25
+            agent.max_speed = 0.5 if agent.adversary else 0.2
             agent.max_angular = 0.0 if agent.adversary else 0.0
             agent.R = 0.15  # 小车的半径
             agent.delta = 0.1  # 安全半径
@@ -243,7 +243,7 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -50
+            r_l = -500 # -50
 
         r_step = w1*r_f + w2*r_d + r_l
 
@@ -355,7 +355,7 @@ class Scenario(BaseScenario):
 def escape_policy(agent, adversaries, landmarks):
     set_CL = 1
     Cp = 0.6
-    Cv = 0.6
+    Cv = 0.75
     dt = 0.1
     action = agent.action
     if agent.done==True:  # terminate
