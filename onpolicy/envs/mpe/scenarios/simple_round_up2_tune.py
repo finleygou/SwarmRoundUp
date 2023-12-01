@@ -405,7 +405,7 @@ def escape_policy(agent, adversaries, landmarks):
                 nearest_lmk = lmk
         if d_min < 1.0:
             d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
-            d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+            d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)**2
             if np.dot(d_vec_ij, esp_direction) < 0:
                 d_vec_ij = d_vec_ij - np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
         else:
