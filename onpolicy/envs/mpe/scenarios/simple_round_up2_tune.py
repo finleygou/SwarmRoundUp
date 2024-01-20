@@ -2,9 +2,9 @@ import numpy as np
 from onpolicy.envs.mpe.core import World, Agent, Landmark
 from onpolicy.envs.mpe.scenario import BaseScenario
 from onpolicy import global_var as glv
+from onpolicy.envs.mpe.scenarios.voronoi_tool import get_init_bnd,update_bound,bounded_voronoi,add_obs_hyperplane, compute_target_pts
 
-
-############### TUNE ###################
+############### 5agt TUNE ###################
 class Scenario(BaseScenario):
     
     def __init__(self) -> None:
@@ -14,6 +14,7 @@ class Scenario(BaseScenario):
         self.cr = 1.0  # 取消Cr
         self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 1.5
+        self.rl = -3
 
         self.band_init = 0.2
         self.band_target = 0.1
@@ -164,26 +165,15 @@ class Scenario(BaseScenario):
     def landmarks(self, world):
         return [landmark for landmark in world.landmarks]
 
-    def set_CL(self, CL_ratio, landmarks):
-        # Start_CL = 0.45
-        # if Start_CL< CL_ratio < self.cp:
-        #     # print('in here Cd')
-        #     landmarks[0].R = 0.25*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-        #     landmarks[1].R = 0.16*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-        #     landmarks[0].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-        #     landmarks[1].delta = 0.15*(CL_ratio-Start_CL)/(self.cp-Start_CL)
-        # elif CL_ratio > self.cp:
-        #     landmarks[0].R = 0.25
-        #     landmarks[1].R = 0.16
-        #     landmarks[0].delta = 0.15
-        #     landmarks[1].delta = 0.15
-        # else:
-        #     landmarks[0].R = 0.0
-        #     landmarks[1].R = 0.0
-        #     landmarks[0].delta = 0.0
-        #     landmarks[1].delta = 0.0
-        # self.d_lft_band = self.band_init - (self.band_init - self.band_target)*CL_ratio/self.cp
-        pass
+    def set_CL(self, CL_ratio, landmarks): 
+        if 0.4< CL_ratio <= 0.6:
+            self.rl = -10
+        elif 0.6< CL_ratio <= 0.8:
+            self.rl = -20
+        elif CL_ratio >= 0.8:
+            self.rl = -30
+        else:
+            self.rl = -3
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -255,7 +245,7 @@ class Scenario(BaseScenario):
         if all(flag_collide) == False:
             # print(flag_collide)
             # print('collide!!!!!!!')
-            r_l = -50
+            r_l = self.rl
 
         r_step = w1*r_f + w2*r_d + r_l
 
@@ -363,11 +353,12 @@ class Scenario(BaseScenario):
             
 # # 逃逸目标的策略
 def escape_policy(agent, adversaries, landmarks):
-    set_CL = 1
-    Cp = 0.6
-    Cv = 0.6
+    set_CL = 1  # render/training 0, tune 1
+    Cp = 0.6  # 0.6 in tune
+    Cv = 0.6  # 0.6 in tune
     dt = 0.1
     action = agent.action
+    escape_mode = 2  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
     if agent.done==True:  # terminate
         # 减速到0
         target_v = np.linalg.norm(agent.state.p_vel)
@@ -380,6 +371,7 @@ def escape_policy(agent, adversaries, landmarks):
         v_y = agent.state.p_vel[1] + a_y*dt
         escape_v = np.array([v_x, v_y])
     else:
+        # 设置逃逸目标的速度上限
         if set_CL:
             max_v = agent.max_speed
             CL_ratio = glv.get_value('CL_ratio')
@@ -391,27 +383,115 @@ def escape_policy(agent, adversaries, landmarks):
         else:
             max_speed = agent.max_speed
 
-        esp_direction = np.array([0, 0])
-        for adv in adversaries:
-            d_vec_ij = agent.state.p_pos - adv.state.p_pos
-            d_vec_ij = d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij)-adv.R-agent.R)**2
+        if escape_mode == 1:
+            esp_direction = np.array([0, 0])
+            for adv in adversaries:
+                d_vec_ij = agent.state.p_pos - adv.state.p_pos
+                d_vec_ij = d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij)-adv.R-agent.R)**2
+                esp_direction = esp_direction + d_vec_ij
+
+            d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
+            for lmk in landmarks:
+                dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+                if dist_ < d_min:
+                    d_min = dist_
+                    nearest_lmk = lmk
+            if d_min < 1.0:
+                d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
+                d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+                if np.dot(d_vec_ij, esp_direction) < 0:
+                    d_vec_ij = d_vec_ij - np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
+            else:
+                d_vec_ij = np.array([0, 0])
             esp_direction = esp_direction + d_vec_ij
 
-        d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
-        for lmk in landmarks:
-            dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
-            if dist_ < d_min:
-                d_min = dist_
-                nearest_lmk = lmk
-        if d_min < 1.0:
-            d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
-            d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)**2
-            if np.dot(d_vec_ij, esp_direction) < 0:
-                d_vec_ij = d_vec_ij - np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
-        else:
-            d_vec_ij = np.array([0, 0])
-        esp_direction = esp_direction + d_vec_ij
+        elif escape_mode == 2:
+            d_near = 10
+            for adv in adversaries:
+                d_vec_ij = agent.state.p_pos - adv.state.p_pos
+                if np.linalg.norm(d_vec_ij) < d_near:
+                    d_near = np.linalg.norm(d_vec_ij)
+                    d_vec_ij = d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij)-adv.R-agent.R)
+                    esp_direction = 5*d_vec_ij  # *5是为了与mode1归一化。mode1是5个方向加起来
 
+            d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
+            for lmk in landmarks:
+                dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+                if dist_ < d_min:
+                    d_min = dist_
+                    nearest_lmk = lmk
+            if d_min < 1.0:
+                d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
+                d_vec_ij = 0.5 * d_vec_ij / np.linalg.norm(d_vec_ij) / (np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+                if np.dot(d_vec_ij, esp_direction) < 0:
+                    d_vec_ij = d_vec_ij - 0.5*np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction, esp_direction) * esp_direction
+            else:
+                d_vec_ij = np.array([0, 0])
+            esp_direction = esp_direction + d_vec_ij
+
+        elif escape_mode == 3:
+            dist = np.zeros((len(adversaries), 629, 1))
+            for adv in adversaries:  # 找阿波罗尼奥斯圆
+                gamma = max_speed / adv.max_speed
+                adv.x_a = (agent.state.p_pos[0] - adv.state.p_pos[0] * gamma ** 2) / (1 - gamma ** 2)
+                adv.y_a = (agent.state.p_pos[1] - adv.state.p_pos[1] * gamma ** 2) / (1 - gamma ** 2)
+                x_i = adv.x_a - agent.state.p_pos[0]
+                y_i = adv.y_a - agent.state.p_pos[1]
+                adv.r_a = (gamma * np.linalg.norm(agent.state.p_pos - adv.state.p_pos)) / (1 - gamma ** 2)
+                for theta in np.arange(0, 6.29, 0.01):  # 找某个方向上的最近处
+                    a = 1
+                    b = - (2 * x_i * np.cos(theta) + 2 * y_i * np.sin(theta))
+                    c = x_i ** 2 + y_i ** 2 - adv.r_a ** 2
+                    dist1 = (- b + np.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+                    dist2 = (- b - np.sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+                    dist[adv.i, int(theta * 100)] = dist1 if dist1 > 0 else dist2
+
+            min_R = dist.min(axis=0)
+            max_theta = np.argmax(min_R) * 0.01  # 所有最近处中的最远的地方
+            esp_direction = 5*np.array([np.cos(max_theta), np.sin(max_theta)])  # *5是防止避障项影响过大
+
+            # 避障
+            d_min = 1.0  # 只有1.0以内的障碍物才纳入考虑
+            for lmk in landmarks:
+                dist_ = np.linalg.norm(agent.state.p_pos - lmk.state.p_pos)
+                if dist_ < d_min:
+                    d_min = dist_
+                    nearest_lmk = lmk
+            if d_min < 1.0:
+                d_vec_ij = agent.state.p_pos - nearest_lmk.state.p_pos
+                d_vec_ij = 0.5 * d_vec_ij/np.linalg.norm(d_vec_ij)/(np.linalg.norm(d_vec_ij) - nearest_lmk.R - agent.R)
+                if np.dot(d_vec_ij, esp_direction) < 0:
+                    d_vec_ij = d_vec_ij - 0.5*np.dot(d_vec_ij, esp_direction) / np.dot(esp_direction,
+                                                                                   esp_direction) * esp_direction
+            else:
+                d_vec_ij = np.array([0, 0])
+            esp_direction = esp_direction + d_vec_ij
+
+        elif escape_mode == 4:
+            # init
+            n_pursuer = len(adversaries)
+            evader = agent.state.p_pos
+
+            pursuer = []
+            for adv in adversaries:
+                pursuer.append(adv.state.p_pos)
+            pursuer = np.array(pursuer).reshape(5, 2)
+            all_agents = np.vstack([evader, pursuer])
+
+            obs = []
+            for lmk in landmarks:
+                obs.append([lmk.state.p_pos[0], lmk.state.p_pos[1], lmk.R, lmk.delta])
+            obs = np.array(obs).reshape(6, 4)
+            # print(obs)
+
+            # compute voronoi
+            bound = get_init_bnd(evader, pursuer, n_pursuer)
+            vor_polys = bounded_voronoi(bound, all_agents)
+            vor_CA = add_obs_hyperplane(all_agents, vor_polys, obs)
+            target_pt = compute_target_pts(vor_CA, all_agents)
+            esp_direction = target_pt - evader
+
+        ########################## update state ######################
         esp_direction = esp_direction/np.linalg.norm(esp_direction)
         a_x, a_y = esp_direction[0]*agent.max_accel, esp_direction[1]*agent.max_accel
         v_x = agent.state.p_vel[0] + a_x*dt
@@ -425,6 +505,8 @@ def escape_policy(agent, adversaries, landmarks):
 
     action.u = escape_v  # 1*2
     return action
+
+
 
 # # other util functions
 def Get_antiClockAngle(v1, v2):  # 向量v1逆时针转到v2所需角度。范围：0-2pi

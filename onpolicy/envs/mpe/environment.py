@@ -25,7 +25,7 @@ class MultiAgentEnv(gym.Env):
 
         # set CL
         self.use_policy = 0
-        self.use_CL = 1  # training:1, render/tune:0
+        self.use_CL = 0  # training:1, render/tune:0
         self.CL_ratio = 0
         self.Cp= 0.6 # 1.0 # 0.3
         self.JS_thre = 0
@@ -276,7 +276,7 @@ class MultiAgentEnv(gym.Env):
                             if target_v < 1e-3:
                                 acc = np.array([0,0])
                             else:
-                                acc = -agent.state.p_vel/target_v*agent.max_accel
+                                acc = -agent.state.p_vel/target_v*agent.max_accel*1.1
                             network_output[0], network_output[1] = acc[0], acc[1]
 
                     # elif self.is_ternimate and self.use_policy:
