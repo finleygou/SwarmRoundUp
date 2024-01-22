@@ -96,94 +96,94 @@ def bounded_voronoi(bnd, pnts):
 def add_obs_hyperplane(all_agents, vor, obs):
     global i_cell
     new_vor = []
-    for i in range(len(vor)):
-        agt = all_agents[i]  # agent顺序和维诺图顺序保持一致
-        points = np.array(vor[i])  # 维诺cell i的顶点
-        hull0 = Polygon(points)
-        bound_points = np.array([[-100, -100], [100, -100], [100, 100], [-100, 100]])
-        for j in range(len(obs)):
-            x_, y_, R_, delta_ = obs[j, 0], obs[j, 1], obs[j, 2], obs[j, 3]
-            center = np.array([x_, y_])
-            w = agt - center  # 超平面wx=b
-            P0 = center + w/np.linalg.norm(w)*(R_+delta_)
-            A_, B_, C_ = -w[0], -w[1], np.dot(w, P0)
-            big_poly_bnd = []
 
-            # 选择三个初始方向,基于P0沿每个方向上走100作为点
-            e1 = w/np.linalg.norm(w)
-            e2 = np.array([e1[1], -e1[0]])
-            e3 = -e2
-            P1 = P0 + e1*100
-            P2 = P0 + e2*100
-            P3 = P0 + e3*100
-            big_poly_bnd = [P1, P2, P3]
-            '''
-            for k in range(len(bound_points)):
-                if np.dot(w, bound_points[k]) > C_ and len(big_poly_bnd) < 2:  # 有可能3个点都在超平面一侧
-                    big_poly_bnd.append(bound_points[k])
-                    # print(bound_points[k])
-            if abs(B_) < 1e-4:  # B == 0
-                big_poly_bnd.append([-C_/A_, 100])
-                big_poly_bnd.append([-C_/A_, -100])
+    agt = all_agents[0]  # agent顺序和维诺图顺序保持一致
+    points = np.array(vor[0])  # 维诺cell i的顶点
+    hull0 = Polygon(points)
+    bound_points = np.array([[-100, -100], [100, -100], [100, 100], [-100, 100]])
+    for j in range(len(obs)):
+        x_, y_, R_, delta_ = obs[j, 0], obs[j, 1], obs[j, 2], obs[j, 3]
+        center = np.array([x_, y_])
+        w = agt - center  # 超平面wx=b
+        P0 = center + w/np.linalg.norm(w)*(R_+delta_)
+        A_, B_, C_ = -w[0], -w[1], np.dot(w, P0)
+        big_poly_bnd = []
+
+        # 选择三个初始方向,基于P0沿每个方向上走100作为点
+        e1 = w/np.linalg.norm(w)
+        e2 = np.array([e1[1], -e1[0]])
+        e3 = -e2
+        P1 = P0 + e1*100
+        P2 = P0 + e2*100
+        P3 = P0 + e3*100
+        big_poly_bnd = [P1, P2, P3]
+        '''
+        for k in range(len(bound_points)):
+            if np.dot(w, bound_points[k]) > C_ and len(big_poly_bnd) < 2:  # 有可能3个点都在超平面一侧
+                big_poly_bnd.append(bound_points[k])
+                # print(bound_points[k])
+        if abs(B_) < 1e-4:  # B == 0
+            big_poly_bnd.append([-C_/A_, 100])
+            big_poly_bnd.append([-C_/A_, -100])
+        else:
+            big_poly_bnd.append([100, (-C_-A_*100)/B_])
+            big_poly_bnd.append([-100, (-C_-A_ * (-100))/B_])
+
+        # 这一段对取交集的区域进行polish
+        dist_thre = 50
+        del_flag = False
+        for l in range(2):
+            dist_ = np.linalg.norm(np.array(big_poly_bnd[0]) - np.array(big_poly_bnd[l+2]))
+            if dist_ < dist_thre:
+                big_poly_bnd.pop(0)
+                del_flag = True
+                break
+        for l in range(2):
+            if del_flag == True:
+                break
             else:
-                big_poly_bnd.append([100, (-C_-A_*100)/B_])
-                big_poly_bnd.append([-100, (-C_-A_ * (-100))/B_])
-
-            # 这一段对取交集的区域进行polish
-            dist_thre = 50
-            del_flag = False
-            for l in range(2):
-                dist_ = np.linalg.norm(np.array(big_poly_bnd[0]) - np.array(big_poly_bnd[l+2]))
+                dist_ = np.linalg.norm(np.array(big_poly_bnd[1]) - np.array(big_poly_bnd[l+2]))
                 if dist_ < dist_thre:
-                    big_poly_bnd.pop(0)
+                    # print('deleted1', big_poly_bnd)
+                    a = big_poly_bnd.pop(1)
+                    # print('after deleted1', big_poly_bnd)
+                    # print('deleted1', a)
                     del_flag = True
                     break
-            for l in range(2):
-                if del_flag == True:
-                    break
-                else:
-                    dist_ = np.linalg.norm(np.array(big_poly_bnd[1]) - np.array(big_poly_bnd[l+2]))
-                    if dist_ < dist_thre:
-                        # print('deleted1', big_poly_bnd)
-                        a = big_poly_bnd.pop(1)
-                        # print('after deleted1', big_poly_bnd)
-                        # print('deleted1', a)
-                        del_flag = True
-                        break
-            '''
+        '''
 
-            # print(del_flag)
-            # print(big_poly_bnd)
-            big_poly = Polygon(big_poly_bnd)
-            i_cell = hull0.intersection(big_poly)  # 取交集后的区域
-            # print(hull0)
-            hull0 = Polygon(i_cell.exterior.coords[:-1])
+        # print(del_flag)
+        # print(big_poly_bnd)
+        big_poly = Polygon(big_poly_bnd)
+        i_cell = hull0.intersection(big_poly)  # 取交集后的区域
+        # print(hull0)
+        hull0 = Polygon(i_cell.exterior.coords[:-1])
 
-        # 第一个vor区域遍历完所有障碍物后
-        new_vor.append(list(i_cell.exterior.coords[:-1]))
+    # 第一个vor区域遍历完所有障碍物后
+    new_vor = list(i_cell.exterior.coords[:-1])
 
     return new_vor
 
 def compute_target_pts(vor_CA, all_agents):
-    target_pts = []
-    for i in range(len(all_agents)):
-        pts = np.array(vor_CA[i])
-        tri_cent = []
-        for j in range(len(pts) - 2):
-            pt1, pt2, pt3 = pts[0], pts[j + 1], pts[j + 2]
-            area = 1 / 2 * np.cross(pt2 - pt1, pt3 - pt1)
-            tri_cent.append([1 / 3 * (pt1[0] + pt2[0] + pt3[0]), 1 / 3 * (pt1[1] + pt2[1] + pt3[1]), area])
-        Area, sumx, sumy = 0, 0, 0
-        for j in range(len(tri_cent)):
-            sumx = sumx + tri_cent[j][0] * tri_cent[j][2]
-            sumy = sumy + tri_cent[j][1] * tri_cent[j][2]
-            Area = Area + tri_cent[j][2]
-        Cx = sumx / Area
-        Cy = sumy / Area
-        if i == 0:  # 只针对逃逸目标
-            if Cy < all_agents[0][1]:
-                Cy = all_agents[0][1] + (all_agents[0][1] - Cy)
-        target_pts.append([Cx, Cy])
 
-    return target_pts
+    pts = np.array(vor_CA)
+    tri_cent = []
+    for j in range(len(pts) - 2):
+        pt1, pt2, pt3 = pts[0], pts[j + 1], pts[j + 2]
+        area = 1 / 2 * np.cross(pt2 - pt1, pt3 - pt1)
+        tri_cent.append([1 / 3 * (pt1[0] + pt2[0] + pt3[0]), 1 / 3 * (pt1[1] + pt2[1] + pt3[1]), area])
+    Area, sumx, sumy = 0, 0, 0
+    for j in range(len(tri_cent)):
+        sumx = sumx + tri_cent[j][0] * tri_cent[j][2]
+        sumy = sumy + tri_cent[j][1] * tri_cent[j][2]
+        Area = Area + tri_cent[j][2]
+    Cx = sumx / Area
+    Cy = sumy / Area
+    # 只针对逃逸目标
+    if Cy < all_agents[0][1]:
+        Cy = all_agents[0][1] + (all_agents[0][1] - Cy)
+
+    target_pt = [Cx, Cy]
+
+    return target_pt
 

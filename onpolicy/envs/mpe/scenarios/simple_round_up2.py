@@ -37,7 +37,7 @@ class Scenario(BaseScenario):
             agent.adversary = True if i < num_adversaries else False  # agent 0 1 2 3 4:adversary.  5: good
             agent.size = 0.03 if agent.adversary else 0.045
             agent.max_accel = 0.5 if agent.adversary else 0.5  # max acc
-            agent.max_speed = 0.5 if agent.adversary else 0.15
+            agent.max_speed = 0.5 if agent.adversary else 0.25
             agent.max_angular = 0.0 if agent.adversary else 0.0
             agent.R = 0.15  # 小车的半径
             agent.delta = 0.1  # 安全半径
@@ -345,7 +345,7 @@ def escape_policy(agent, adversaries, landmarks):
     Cv = 0.2  # 0.6 in tune
     dt = 0.1
     action = agent.action
-    escape_mode = 2  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
+    escape_mode = 1  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
     if agent.done==True:  # terminate
         # 减速到0
         target_v = np.linalg.norm(agent.state.p_vel)
@@ -475,8 +475,7 @@ def escape_policy(agent, adversaries, landmarks):
             bound = get_init_bnd(evader, pursuer, n_pursuer)
             vor_polys = bounded_voronoi(bound, all_agents)
             vor_CA = add_obs_hyperplane(all_agents, vor_polys, obs)
-            target_pts = compute_target_pts(vor_CA, all_agents)
-            target_pt = target_pts[0]
+            target_pt = compute_target_pts(vor_CA, all_agents)
             esp_direction = target_pt - evader
 
         ########################## update state ######################
