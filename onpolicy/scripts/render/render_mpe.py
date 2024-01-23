@@ -133,8 +133,9 @@ def main(args):
 
     runner = Runner(config)
     runner.render()
-    
-    if all_args.save_data==True:
+
+
+    if all_args.save_data == True:
         from onpolicy.envs.mpe.environment import INFO
         #csv
         file = open('INFO.csv', 'w', encoding='utf-8', newline="")

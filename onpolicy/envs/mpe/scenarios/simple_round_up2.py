@@ -14,9 +14,10 @@ class Scenario(BaseScenario):
         self.cd = 1.0  # 取消Cd
         self.cp = 0.4
         self.cr = 1.0  # 取消Cr
-        self.d_cap = 1.0 # 期望围捕半径,动态变化,在set_CL里面
+        self.d_cap = 1.0  # 期望围捕半径,动态变化,在set_CL里面
         self.init_target_pos = 1.5
         self.use_CL = 0  # 是否使用课程式训练(render时改为false)
+        self.r = 0.3
 
     # 设置agent,landmark的数量，运动属性。
     def make_world(self, args):
@@ -81,12 +82,12 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 0.3*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
+                init_dist = self.init_target_pos
                 if self.use_CL:
-                    init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
+                    init_r = self.r * (glv.get_value('CL_ratio') / self.cp)
                 else:
-                    init_dist = self.init_target_pos
-                r_ = 0
+                    init_r = self.r
+                r_, theta_ = init_r * rand_pos[0], np.pi * 2 * rand_pos[1]  # 半径为r_，角度360，随机采样。圆域。
                 agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy
@@ -239,10 +240,14 @@ class Scenario(BaseScenario):
         ####### calculate dones ########
         dones = []
         for adv in adversaries:
-            di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
-            _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
-            # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
-            if di_adv<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+            # di_adv = np.linalg.norm(target.state.p_pos - adv.state.p_pos) - self.d_cap
+            # _, left_nb_angle_, right_nb_angle_ = find_neighbors(adv, adversaries, target)
+            # # print('i:{}, d_lft:{} leftE:{}, rightE:{}'.format(adv.i, abs(di_adv), abs(left_nb_angle_ - exp_alpha), abs(right_nb_angle_ - exp_alpha)))
+            # if di_adv<0.2 and abs(left_nb_angle_ - exp_alpha)<0.3 and abs(right_nb_angle_ - exp_alpha)<0.3: # 30°
+            #     dones.append(True)
+            d_i = np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap
+            # print(d_i)
+            if d_i < 0.25:
                 dones.append(True)
             else: dones.append(False)
         # print(dones)
@@ -323,13 +328,21 @@ class Scenario(BaseScenario):
         adversaries = self.adversaries(world)
         exp_alpha = np.pi*2/len(adversaries)
         dones = []
+        '''
+        # 标准围捕的终态
         for adv in adversaries:
             d_i = np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap
             _, left_nb_angle, right_nb_angle = find_neighbors(adv, adversaries, target)
             if d_i<0 and abs(left_nb_angle - exp_alpha)<0.5 and abs(right_nb_angle - exp_alpha)<0.5: # 30°
                 dones.append(True)
             else: dones.append(False)
-        
+        '''
+        for adv in adversaries:
+            d_i = np.linalg.norm(adv.state.p_pos - target.state.p_pos) - self.d_cap
+            print(d_i)
+            if d_i < 0.2:
+                dones.append(True)
+
         # print("dones is: ",dones)
         if all(dones)==True:  
             agent.done = True  # 在env中改变dones
@@ -345,7 +358,7 @@ def escape_policy(agent, adversaries, landmarks):
     Cv = 0.2  # 0.6 in tune
     dt = 0.1
     action = agent.action
-    escape_mode = 1  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
+    escape_mode = 4  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
     if agent.done==True:  # terminate
         # 减速到0
         target_v = np.linalg.norm(agent.state.p_vel)
