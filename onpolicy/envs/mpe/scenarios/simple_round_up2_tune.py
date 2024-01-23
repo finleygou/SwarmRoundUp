@@ -19,7 +19,9 @@ class Scenario(BaseScenario):
         self.band_init = 0.2
         self.band_target = 0.1
         self.d_lft_band = self.band_target
-        self.use_CL = 1  # 是否使用课程式训练(render时改为false)
+        self.r = 0.3
+        self.use_CL = 1  # train/tune/tune2: 1  render:0
+        self.tune2 = 1  # 围捕成功率实验添加，初始化半径。 tune2: 1  else:0
 
 
     # 设置agent,landmark的数量，运动属性。
@@ -85,12 +87,12 @@ class Scenario(BaseScenario):
                 agent.state.phi = np.pi/2
             elif i == 5:
                 rand_pos = np.random.uniform(0, 1, 2)  # 1*2的随机数组，范围0-1
-                r_, theta_ = 0.3*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为0.5，角度360，随机采样。圆域。
-                if self.use_CL:
-                    init_dist = self.init_target_pos*(self.cr + (1-self.cr)*glv.get_value('CL_ratio')/self.cp)
+                init_dist = self.init_target_pos
+                if self.tune2 and self.use_CL:
+                    init_r = self.r*(glv.get_value('CL_ratio')/self.cp)
                 else:
-                    init_dist = self.init_target_pos
-                r_ = 0
+                    init_r = self.r
+                r_, theta_ = init_r*rand_pos[0], np.pi*2*rand_pos[1]  # 半径为r_，角度360，随机采样。圆域。
                 agent.state.p_pos = np.array([r_*np.cos(theta_), init_dist+r_*np.sin(theta_)])
                 agent.state.p_vel = np.zeros(world.dim_p)
                 agent.action_callback = escape_policy
@@ -174,6 +176,9 @@ class Scenario(BaseScenario):
             self.rl = -30
         else:
             self.rl = -3
+        
+        if self.tune2:
+            self.rl = -30
     
     # agent 和 adversary 分别的reward
     def reward(self, agent, world):
@@ -355,10 +360,10 @@ class Scenario(BaseScenario):
 def escape_policy(agent, adversaries, landmarks):
     set_CL = 1  # render/training 0, tune 1
     Cp = 0.6  # 0.6 in tune
-    Cv = 0.6  # 0.6 in tune
+    Cv = 1.0  # 0.6 in tune, 1.0 in tune2
     dt = 0.1
     action = agent.action
-    escape_mode = 2  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
+    escape_mode = 1  # 1:APF  2:Greedy  3: Apollonius  4:ECBVC
     if agent.done==True:  # terminate
         # 减速到0
         target_v = np.linalg.norm(agent.state.p_vel)

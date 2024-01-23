@@ -15,6 +15,7 @@ class MPERunner(Runner):
     def __init__(self, config):
         super(MPERunner, self).__init__(config)
         self.use_train_render = False
+        self.no_imageshow = True
 
     def run(self):
         if self.all_args.save_data:
@@ -240,8 +241,11 @@ class MPERunner(Runner):
         for episode in range(self.all_args.render_episodes):
             obs = envs.reset()
             if self.all_args.save_gifs:
-                image = envs.render('rgb_array')[0][0]  # imshow
-                all_frames.append(image)
+                if self.no_imageshow:
+                    envs.render('rgb_array')
+                else:
+                    image = envs.render('rgb_array')[0][0]  # imshow
+                    all_frames.append(image)
             else:
                 envs.render('human')
 
@@ -284,16 +288,19 @@ class MPERunner(Runner):
                 masks[dones == True] = np.zeros(((dones == True).sum(), 1), dtype=np.float32)
 
                 if self.all_args.save_gifs:
-                    image = envs.render('rgb_array')[0][0]
-                    all_frames.append(image)
-                    calc_end = time.time()
-                    elapsed = calc_end - calc_start
-                    if elapsed < self.all_args.ifi:
-                        time.sleep(self.all_args.ifi - elapsed)
+                    if self.no_imageshow:
+                        envs.render('rgb_array')
+                    else:
+                        image = envs.render('rgb_array')[0][0]
+                        all_frames.append(image)
+                        calc_end = time.time()
+                        elapsed = calc_end - calc_start
+                        if elapsed < self.all_args.ifi:
+                            time.sleep(self.all_args.ifi - elapsed)
                 else:
                     envs.render('human')
 
             print("average episode rewards is: " + str(np.mean(np.sum(np.array(episode_rewards), axis=0))))
 
-        if self.all_args.save_gifs:
+        if self.all_args.save_gifs and self.no_imageshow==False:
             imageio.mimsave(str(self.gif_dir) + '/render.gif', all_frames, duration=self.all_args.ifi)
